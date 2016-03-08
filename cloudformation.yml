@@ -1,0 +1,210 @@
+Description: |
+  Creates a Lambda function that invokes other Lambda functions with
+  SQS events. The mapping of queues to functions is in the
+  XQueue/XFunction parameters. For example, 1Function will be invoked
+  for every item from 1Queue.
+
+Parameters:
+  1Queue:
+    Description: The URL of the first SQS queue to process.
+    Type: String
+  1Function:
+    Description: The name of the function to invoke from 1_Queue.
+    Type: String
+
+  2Queue:
+    Type: String
+  2Function:
+    Type: String
+
+  3Queue:
+    Type: String
+  3Function:
+    Type: String
+
+  4Queue:
+    Type: String
+  4Function:
+    Type: String
+
+  5Queue:
+    Type: String
+  5Function:
+    Type: String
+
+  6Queue:
+    Type: String
+  6Function:
+    Type: String
+
+  7Queue:
+    Type: String
+  7Function:
+    Type: String
+
+  8Queue:
+    Type: String
+  8Function:
+    Type: String
+
+  9Queue:
+    Type: String
+  9Function:
+    Type: String
+
+Outputs: {}
+
+Conditions: {}
+
+Resources:
+
+  ### IAM Setup
+
+  SQSToLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+
+  SQSToLambdaPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: lambda-to-sqs-policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:ReceiveMessage
+            Resource:
+              # TODO: Should we list the configured queues and functions here?
+              # Will blank ones cause any problems? One problem is that queues
+              # are supplied with URLs, and functions with names. (No ARNs.)
+              - "*"
+          - Effect: Allow
+            Action:
+              - lambda:Invoke*
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      Roles:
+        - Ref: SQSToLambdaRole
+
+  ### Lambda Function
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Invokes Lambda functions with items from SQS queues.
+      Handler: index.handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+          - SQSToLambdaRole
+          - Arn
+      Runtime: nodejs
+      Timeout: 300
+      Code:
+        ZipFile:
+          # Yes, this code is written inside YAML. What it does is
+          # start off pollers for each configured queue/function. The pollers
+          # will keep polling until they hit the "target time", which is 5
+          # seconds before the function timeout. When a poller finishes, it
+          # calls d() which keeps track of how many are running. When 0 are
+          # running, it exits cleanly with context.done(). Any errors from SQS
+          # or Lambda result in the poller stopping. This is probably not ideal.
+          # (The polling will resume the next time the function runs of course,
+          # but if the errors are throttling errors, it may mean we'll get way
+          # behind on the queue.)
+          Fn::Join:
+          - ""
+          - - var c = "
+            - Fn::Join:
+              - ","
+              - - Ref: 1Queue
+                - Ref: 1Function
+                - Ref: 2Queue
+                - Ref: 2Function
+                - Ref: 3Queue
+                - Ref: 3Function
+                - Ref: 4Queue
+                - Ref: 4Function
+                - Ref: 5Queue
+                - Ref: 5Function
+                - Ref: 6Queue
+                - Ref: 6Function
+                - Ref: 7Queue
+                - Ref: 7Function
+                - Ref: 8Queue
+                - Ref: 8Function
+                - Ref: 9Queue
+                - Ref: 9Function
+
+            - |
+              ".split(",");
+              var AWS = require('aws-sdk');
+              var sqs = new AWS.SQS();
+              var lambda = new AWS.Lambda();
+              function hq(q, f, d, t) {
+                if (t < Date.now()) {
+                  return d();
+                }
+                if (q == "" || f == "") {
+                  return d();
+                }
+                sqs.receiveMessage({
+                  QueueUrl: q,
+                  MaxNumberOfMessages: 1,
+                  WaitTimeSeconds: 1
+                }, function(e, data) {
+                  if (e) {
+                    console.log(err);
+                    return d();
+                  }
+
+                  if (!data.Messages || data.Messages.length === 0) {
+                    return hq(q, f, d, t);
+                  }
+
+                  lambda.invoke({
+                    FunctionName: f,
+                    InvocationType: "Event",
+                    Payload: JSON.stringify({
+                      source: "aws.sqs",
+                      message: data.Messages[0]
+                    })
+                  }, function(err) {
+                    if (err) {
+                      console.log(err);
+                      return d();
+                    }
+
+                    return hq(q, f, d, t);
+                  })
+                })
+              }
+              exports.handler = function(event, context) {
+                var t = Date.now() + 295000;
+                var r = 9;
+                var d = function() {
+                  r = r - 1;
+                  if (r == 0) {
+                    console.log('done');
+                    context.done();
+                  }
+                }
+                for (var i = 0; i < c.length; i += 2) {
+                  hq(c[i], c[i+1], d, t);
+                }
+              }

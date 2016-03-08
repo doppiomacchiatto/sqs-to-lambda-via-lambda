@@ -1,0 +1,216 @@
+{
+  "Description": "Creates a Lambda function that invokes other Lambda functions with\nSQS events. The mapping of queues to functions is in the\nXQueue/XFunction parameters. For example, 1Function will be invoked\nfor every item from 1Queue.\n",
+  "Parameters": {
+    "1Queue": {
+      "Description": "The URL of the first SQS queue to process.",
+      "Type": "String"
+    },
+    "1Function": {
+      "Description": "The name of the function to invoke from 1_Queue.",
+      "Type": "String"
+    },
+    "2Queue": {
+      "Type": "String"
+    },
+    "2Function": {
+      "Type": "String"
+    },
+    "3Queue": {
+      "Type": "String"
+    },
+    "3Function": {
+      "Type": "String"
+    },
+    "4Queue": {
+      "Type": "String"
+    },
+    "4Function": {
+      "Type": "String"
+    },
+    "5Queue": {
+      "Type": "String"
+    },
+    "5Function": {
+      "Type": "String"
+    },
+    "6Queue": {
+      "Type": "String"
+    },
+    "6Function": {
+      "Type": "String"
+    },
+    "7Queue": {
+      "Type": "String"
+    },
+    "7Function": {
+      "Type": "String"
+    },
+    "8Queue": {
+      "Type": "String"
+    },
+    "8Function": {
+      "Type": "String"
+    },
+    "9Queue": {
+      "Type": "String"
+    },
+    "9Function": {
+      "Type": "String"
+    }
+  },
+  "Outputs": {
+  },
+  "Conditions": {
+  },
+  "Resources": {
+    "SQSToLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      }
+    },
+    "SQSToLambdaPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "lambda-to-sqs-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ReceiveMessage"
+              ],
+              "Resource": [
+                "*"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lambda:Invoke*"
+              ],
+              "Resource": [
+                "*"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:*:*:*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "SQSToLambdaRole"
+          }
+        ]
+      }
+    },
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "Invokes Lambda functions with items from SQS queues.",
+        "Handler": "index.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "SQSToLambdaRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs",
+        "Timeout": 300,
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "",
+              [
+                "var c = \"",
+                {
+                  "Fn::Join": [
+                    ",",
+                    [
+                      {
+                        "Ref": "1Queue"
+                      },
+                      {
+                        "Ref": "1Function"
+                      },
+                      {
+                        "Ref": "2Queue"
+                      },
+                      {
+                        "Ref": "2Function"
+                      },
+                      {
+                        "Ref": "3Queue"
+                      },
+                      {
+                        "Ref": "3Function"
+                      },
+                      {
+                        "Ref": "4Queue"
+                      },
+                      {
+                        "Ref": "4Function"
+                      },
+                      {
+                        "Ref": "5Queue"
+                      },
+                      {
+                        "Ref": "5Function"
+                      },
+                      {
+                        "Ref": "6Queue"
+                      },
+                      {
+                        "Ref": "6Function"
+                      },
+                      {
+                        "Ref": "7Queue"
+                      },
+                      {
+                        "Ref": "7Function"
+                      },
+                      {
+                        "Ref": "8Queue"
+                      },
+                      {
+                        "Ref": "8Function"
+                      },
+                      {
+                        "Ref": "9Queue"
+                      },
+                      {
+                        "Ref": "9Function"
+                      }
+                    ]
+                  ]
+                },
+                "\".split(\",\");\nvar AWS = require('aws-sdk');\nvar sqs = new AWS.SQS();\nvar lambda = new AWS.Lambda();\nfunction hq(q, f, d, t) {\n  if (t < Date.now()) {\n    return d();\n  }\n  if (q == \"\" || f == \"\") {\n    return d();\n  }\n  sqs.receiveMessage({\n    QueueUrl: q,\n    MaxNumberOfMessages: 1,\n    WaitTimeSeconds: 1\n  }, function(e, data) {\n    if (e) {\n      console.log(err);\n      return d();\n    }\n\n    if (!data.Messages || data.Messages.length === 0) {\n      return hq(q, f, d, t);\n    }\n\n    lambda.invoke({\n      FunctionName: f,\n      InvocationType: \"Event\",\n      Payload: JSON.stringify({\n        source: \"aws.sqs\",\n        message: data.Messages[0]\n      })\n    }, function(err) {\n      if (err) {\n        console.log(err);\n        return d();\n      }\n\n      return hq(q, f, d, t);\n    })\n  })\n}\nexports.handler = function(event, context) {\n  var t = Date.now() + 295000;\n  var r = 9;\n  var d = function() {\n    r = r - 1;\n    if (r == 0) {\n      console.log('done');\n      context.done();\n    }\n  }\n  for (var i = 0; i < c.length; i += 2) {\n    hq(c[i], c[i+1], d, t);\n  }\n}\n"
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}
