@@ -11,11 +11,14 @@ boring EC2 instance.
 The supplied CloudFormation template will set up a Lambda function that reads
 from SQS queues, and invokes Lambda functions with the payloads.
 
+One day, hopefully soon, Lambda will likely support SQS as a native event source,
+and then this will be completely unnecessary. :fingerscrossed:
+
 ## Getting Started
 
 Upload the `cloudformation.json` file to CloudFormation as a new stack. On the
 parameters screen, enter an SQS queue URL as "1Queue" and a Lambda function name
-as "1Function".
+as "1Function". (You can specify up to 9 pairings.)
 
 Create the stack.
 
@@ -48,3 +51,21 @@ message from SQS:
 
 *NOTE:* Your Lambda function will need to delete the item from the queue using the given
 `ReceiptHandle`! Otherwise, it will keep getting delivered.
+
+## Questions
+
+### What's up with the `cloudformation.yml` file?
+
+Yaml is a much easier format to write these in. Trust me.
+
+### Did you seriously write node code directly in the CloudFormation template?
+
+Yes I did. What's it to you?
+
+(If you have a better way to dynamically get the config into the Lambda
+function, please let me know.)
+
+## Contributing
+
+Please only modify the `cloudformation.yml` file, run `make`, and commit
+both the `cloudformation.*` files. Then submit a pull request.
