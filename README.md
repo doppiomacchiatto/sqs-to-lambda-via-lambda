@@ -16,11 +16,25 @@ and then this will be completely unnecessary. :fingerscrossed:
 
 ## Getting Started
 
-Upload the `cloudformation.json` file to CloudFormation as a new stack. On the
-parameters screen, enter an SQS queue URL as "1Queue" and a Lambda function name
-as "1Function". (You can specify up to 9 pairings.)
+First, create the CloudFormation stack:
 
-Create the stack.
+ * Get the `cloudformation.json` file in this repository onto your hard drive
+   somehow, either by cloning the repository or downloading the file directly
+   from https://raw.githubusercontent.com/zwily/sqs-to-lambda-via-lambda/master/cloudformation.json.
+ * Go to the CloudFormation console.
+ * Click "Create Stack".
+ * Under "Choose a template", select "Upload a template to Amazon S3".
+ * Click "Choose File" and select the `cloudformation.json` file saved in the first step.
+ * Click "Next".
+ * Enter a "Stack name". I prefer "sqs-to-lambda".
+ * For "1Queue", enter the *URL* of the SQS queue to poll.
+ * For "1Function", enter the *name* of the Lambda function to invoke.
+ * (Optionally enter up to 9 queue/function pairings.)
+ * Click "Next".
+ * Click "Next".
+ * Click the "I acknowledge that this might..." checkbox.
+ * Click "Create".
+ * Bounce on the refresh button until the stack is created.
 
 Now, you have to add the cron event source manually, since it is not supported
 by CloudFormation yet:
@@ -44,7 +58,7 @@ message from SQS:
         "MessageId": "2b2ea032-5d3d-4a17-b38c-92bece3ad7ce",
         "ReceiptHandle": "AQEB8t7sz7fgeAalKraYO3brB2+r0d3p18RE3G6J9k9GmRFODibL64oget5R6NaRJDoYrwHNtLutKOiY3Ggls2F6LRJFKLZhLbr3fSd+Hg6KiECu4tfdyAZxAwj2/X5QIieu0dtCMIEujHSDn7Xzz9L5hNW/uCB7Tx7Km0Sal077KE4h4CCHMvZDza8bNzmFTXvfRj5+odG80oLtir0w+lwx+DQYnkIZJxvVRLkfOspU2/84/ye4VZkr8pOD7xIGtgzU/Z7pdzTXeKw0WSfHQoQ661qBcqBHhMTjXXZ0WzsYHW1HPqtSwqA760nZfh0RXRjo9AGFsXYmtnQoFs64PCJ1hZ2u+N+azHChx4Ma+PtT6pgUfkCzrYG5Gq/BaR+RmPsW",
         "MD5OfBody": "abecffaa52f529a2b83b6612a7964b02",
-        "Body": "fads"
+        "Body": "{\"foo\":\"bar\"}"
     }
 }
 ```
