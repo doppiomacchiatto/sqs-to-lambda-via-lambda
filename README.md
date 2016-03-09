@@ -16,36 +16,20 @@ and then this will be completely unnecessary. :fingerscrossed:
 
 ## Getting Started
 
-First, create the CloudFormation stack:
+First, create the CloudFormation stack. Inside a clone of this project:
 
- * Get the `cloudformation.json` file in this repository onto your hard drive
-   somehow, either by cloning the repository or downloading the file directly
-   from https://raw.githubusercontent.com/zwily/sqs-to-lambda-via-lambda/master/cloudformation.json.
- * Go to the CloudFormation console.
- * Click "Create Stack".
- * Under "Choose a template", select "Upload a template to Amazon S3".
- * Click "Choose File" and select the `cloudformation.json` file saved in the first step.
- * Click "Next".
- * Enter a "Stack name". I prefer "sqs-to-lambda".
- * For "1Queue", enter the *URL* of the SQS queue to poll.
- * For "1Function", enter the *name* of the Lambda function to invoke.
- * (Optionally enter up to 9 queue/function pairings.)
- * Click "Next".
- * Click "Next".
- * Click the "I acknowledge that this might..." checkbox.
- * Click "Create".
- * Bounce on the refresh button until the stack is created.
+```bash
+aws --region us-east-1 cloudformation create-stack                            \
+  --stack-name sqs-to-lambda                                                  \
+  --template-body file://cloudformation.json                                  \
+  --parameters ParameterKey=1Queue,ParameterValue=<queue url>                 \
+               ParameterKey=1Function,ParameterValue=<lambda function name>   \
+  --capabilities CAPABILITY_IAM
+```
 
-Now, you have to add the cron event source manually, since it is not supported
-by CloudFormation yet:
+(Specify up to 9 Queue/Function pairs.)
 
- * Go to the Lambda console
- * Click on the new sqs-to-lambda function (elegantly named something like "sqs-to-lambda-LambdaFunction-FSAW1ZXGUJ9S")
- * Click "Event sources"
- * Click "Add event source"
- * Select "CloudWatch Events - Schedule" for "Event source type"
- * Enter `rate(5 minutes)` for "Schedule Expression"
- * Click "Submit"
+You can also use the console, if you are so inclined.
 
 Your function specified as 1Function will now receive everything sent to 1Queue.
 The payload is an object with `source` set to `aws.sqs` and `message` as the actual

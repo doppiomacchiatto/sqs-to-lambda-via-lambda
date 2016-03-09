@@ -14,43 +14,59 @@ Parameters:
 
   2Queue:
     Type: String
+    Default: ""
   2Function:
     Type: String
+    Default: ""
 
   3Queue:
     Type: String
+    Default: ""
   3Function:
     Type: String
+    Default: ""
 
   4Queue:
     Type: String
+    Default: ""
   4Function:
     Type: String
+    Default: ""
 
   5Queue:
     Type: String
+    Default: ""
   5Function:
     Type: String
+    Default: ""
 
   6Queue:
     Type: String
+    Default: ""
   6Function:
     Type: String
+    Default: ""
 
   7Queue:
     Type: String
+    Default: ""
   7Function:
     Type: String
+    Default: ""
 
   8Queue:
     Type: String
+    Default: ""
   8Function:
     Type: String
+    Default: ""
 
   9Queue:
     Type: String
+    Default: ""
   9Function:
     Type: String
+    Default: ""
 
 Outputs: {}
 
@@ -71,39 +87,172 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lambda-to-sqs-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                Resource:
+                  # TODO: Should we list the configured queues and functions here?
+                  # Will blank ones cause any problems? One problem is that queues
+                  # are supplied with URLs, and functions with names. (No ARNs.)
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - lambda:Invoke*
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
 
-  SQSToLambdaPolicy:
-    Type: AWS::IAM::Policy
+  SetupCloudwatchEventsRole:
+    Type: AWS::IAM::Role
     Properties:
-      PolicyName: lambda-to-sqs-policy
-      PolicyDocument:
+      Path: /
+      AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
           - Effect: Allow
-            Action:
-              - sqs:ReceiveMessage
-            Resource:
-              # TODO: Should we list the configured queues and functions here?
-              # Will blank ones cause any problems? One problem is that queues
-              # are supplied with URLs, and functions with names. (No ARNs.)
-              - "*"
-          - Effect: Allow
-            Action:
-              - lambda:Invoke*
-            Resource:
-              - "*"
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:*
-      Roles:
-        - Ref: SQSToLambdaRole
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: setup-cloudwatch-events
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - events:DeleteRule
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
 
-  ### Lambda Function
 
-  LambdaFunction:
+  ### Custom Resource
+
+  SetupCloudWatchEvents:
+    Type: Custom::SetupCloudWatchEvents
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - SetupCloudwatchEventsFunction
+          - Arn
+      Region:
+        Ref: AWS::Region
+      TargetFunction:
+        Ref: SQSToLambdaFunction
+      TargetFunctionArn:
+        Fn::GetAtt:
+          - SQSToLambdaFunction
+          - Arn
+
+  ### Lambda Functions
+
+  SetupCloudwatchEventsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Creates a 5 minute CloudWatch rule on the specified function.
+      Handler: index.handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+          - SetupCloudwatchEventsRole
+          - Arn
+      Runtime: nodejs
+      Timeout: 300
+      Code:
+        ZipFile: |
+          var AWS = require('aws-sdk');
+          var response = require('cfn-response');
+          exports.handler = function(event, context) {
+            var targetFunction = event.ResourceProperties.TargetFunction;
+            var ruleName = "rule-" + targetFunction;
+            var events = new AWS.CloudWatchEvents();
+            if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+              events.putRule({
+                Name: ruleName,
+                ScheduleExpression: "rate(5 minutes)",
+                State: "ENABLED"
+              }, function(e, data) {
+                if (e) {
+                  console.log(e);
+                  response.send(event, context, response.FAILED, {});
+                  return;
+                }
+                var ruleArn = data.RuleArn;
+                events.putTargets({
+                  Rule: ruleName,
+                  Targets: [{
+                    Id: ruleName,
+                    Arn: event.ResourceProperties.TargetFunctionArn
+                  }]
+                }, function(e, data) {
+                  if (e) {
+                    console.log(e);
+                    response.send(event, context, response.FAILED, {});
+                    return;
+                  }
+
+                  response.send(event, context, response.SUCCESS, {
+                    RuleArn: ruleArn
+                  }, ruleName);
+                })
+              });
+            } else if (event.RequestType === 'Delete') {
+              events.removeTargets({
+                Rule: ruleName,
+                Ids: [ ruleName ]
+              }, function(e, data) {
+                if (e) {
+                  console.log(e);
+                  response.send(event, context, response.FAILED, {});
+                  return;
+                }
+
+                events.deleteRule({
+                  Name: ruleName
+                }, function(e, data) {
+                  if (e) {
+                    console.log(e);
+                    response.send(event, context, response.FAILED, {});
+                    return;
+                  }
+
+                  response.send(event, context, response.SUCCESS, {}, ruleName);
+                })
+              });
+            }
+          }
+
+  SQSToLambdaFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: SQSToLambdaFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - SetupCloudWatchEvents
+          - RuleArn
+
+  SQSToLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Description: Invokes Lambda functions with items from SQS queues.
@@ -150,7 +299,6 @@ Resources:
                 - Ref: 8Function
                 - Ref: 9Queue
                 - Ref: 9Function
-
             - |
               ".split(",");
               var AWS = require('aws-sdk');
@@ -169,7 +317,7 @@ Resources:
                   WaitTimeSeconds: 1
                 }, function(e, data) {
                   if (e) {
-                    console.log(err);
+                    console.log(e);
                     return d();
                   }
 
@@ -184,9 +332,9 @@ Resources:
                       source: "aws.sqs",
                       message: data.Messages[0]
                     })
-                  }, function(err) {
-                    if (err) {
-                      console.log(err);
+                  }, function(e) {
+                    if (e) {
+                      console.log(e);
                       return d();
                     }
 

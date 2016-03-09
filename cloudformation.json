@@ -10,52 +10,68 @@
       "Type": "String"
     },
     "2Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "2Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "3Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "3Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "4Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "4Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "5Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "5Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "6Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "6Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "7Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "7Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "8Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "8Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "9Queue": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     },
     "9Function": {
-      "Type": "String"
+      "Type": "String",
+      "Default": ""
     }
   },
   "Outputs": {
@@ -78,53 +94,154 @@
               "Action": "sts:AssumeRole"
             }
           ]
-        }
-      }
-    },
-    "SQSToLambdaPolicy": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "lambda-to-sqs-policy",
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "sqs:ReceiveMessage"
-              ],
-              "Resource": [
-                "*"
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "lambda:Invoke*"
-              ],
-              "Resource": [
-                "*"
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-              ],
-              "Resource": "arn:aws:logs:*:*:*"
-            }
-          ]
         },
-        "Roles": [
+        "Policies": [
           {
-            "Ref": "SQSToLambdaRole"
+            "PolicyName": "lambda-to-sqs-policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sqs:ReceiveMessage"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:Invoke*"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
           }
         ]
       }
     },
-    "LambdaFunction": {
+    "SetupCloudwatchEventsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "setup-cloudwatch-events",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "events:PutRule",
+                    "events:PutTargets",
+                    "events:RemoveTargets",
+                    "events:DeleteRule"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "SetupCloudWatchEvents": {
+      "Type": "Custom::SetupCloudWatchEvents",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "SetupCloudwatchEventsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "Creates a 5 minute CloudWatch rule on the specified function.",
+        "Handler": "index.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs",
+        "Timeout": 300,
+        "Code": {
+          "ZipFile": "var AWS = require('aws-sdk');\nvar response = require('cfn-response');\nexports.handler = function(event, context) {\n  var targetFunction = event.ResourceProperties.TargetFunction;\n  var ruleName = \"rule-\" + targetFunction;\n  var events = new AWS.CloudWatchEvents();\n  if (event.RequestType === 'Create' || event.RequestType === 'Update') {\n    events.putRule({\n      Name: ruleName,\n      ScheduleExpression: \"rate(5 minutes)\",\n      State: \"ENABLED\"\n    }, function(e, data) {\n      if (e) {\n        console.log(e);\n        response.send(event, context, response.FAILED, {});\n        return;\n      }\n      var ruleArn = data.RuleArn;\n      events.putTargets({\n        Rule: ruleName,\n        Targets: [{\n          Id: ruleName,\n          Arn: event.ResourceProperties.TargetFunctionArn\n        }]\n      }, function(e, data) {\n        if (e) {\n          console.log(e);\n          response.send(event, context, response.FAILED, {});\n          return;\n        }\n\n        response.send(event, context, response.SUCCESS, {\n          RuleArn: ruleArn\n        }, ruleName);\n      })\n    });\n  } else if (event.RequestType === 'Delete') {\n    events.removeTargets({\n      Rule: ruleName,\n      Ids: [ ruleName ]\n    }, function(e, data) {\n      if (e) {\n        console.log(e);\n        response.send(event, context, response.FAILED, {});\n        return;\n      }\n\n      events.deleteRule({\n        Name: ruleName\n      }, function(e, data) {\n        if (e) {\n          console.log(e);\n          response.send(event, context, response.FAILED, {});\n          return;\n        }\n\n        response.send(event, context, response.SUCCESS, {}, ruleName);\n      })\n    });\n  }\n}\n"
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "SetupCloudWatchEvents",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Description": "Invokes Lambda functions with items from SQS queues.",
@@ -205,7 +322,7 @@
                     ]
                   ]
                 },
-                "\".split(\",\");\nvar AWS = require('aws-sdk');\nvar sqs = new AWS.SQS();\nvar lambda = new AWS.Lambda();\nfunction hq(q, f, d, t) {\n  if (t < Date.now()) {\n    return d();\n  }\n  if (q == \"\" || f == \"\") {\n    return d();\n  }\n  sqs.receiveMessage({\n    QueueUrl: q,\n    MaxNumberOfMessages: 1,\n    WaitTimeSeconds: 1\n  }, function(e, data) {\n    if (e) {\n      console.log(err);\n      return d();\n    }\n\n    if (!data.Messages || data.Messages.length === 0) {\n      return hq(q, f, d, t);\n    }\n\n    lambda.invoke({\n      FunctionName: f,\n      InvocationType: \"Event\",\n      Payload: JSON.stringify({\n        source: \"aws.sqs\",\n        message: data.Messages[0]\n      })\n    }, function(err) {\n      if (err) {\n        console.log(err);\n        return d();\n      }\n\n      return hq(q, f, d, t);\n    })\n  })\n}\nexports.handler = function(event, context) {\n  var t = Date.now() + 295000;\n  var r = 9;\n  var d = function() {\n    r = r - 1;\n    if (r == 0) {\n      console.log('done');\n      context.done();\n    }\n  }\n  for (var i = 0; i < c.length; i += 2) {\n    hq(c[i], c[i+1], d, t);\n  }\n}\n"
+                "\".split(\",\");\nvar AWS = require('aws-sdk');\nvar sqs = new AWS.SQS();\nvar lambda = new AWS.Lambda();\nfunction hq(q, f, d, t) {\n  if (t < Date.now()) {\n    return d();\n  }\n  if (q == \"\" || f == \"\") {\n    return d();\n  }\n  sqs.receiveMessage({\n    QueueUrl: q,\n    MaxNumberOfMessages: 1,\n    WaitTimeSeconds: 1\n  }, function(e, data) {\n    if (e) {\n      console.log(e);\n      return d();\n    }\n\n    if (!data.Messages || data.Messages.length === 0) {\n      return hq(q, f, d, t);\n    }\n\n    lambda.invoke({\n      FunctionName: f,\n      InvocationType: \"Event\",\n      Payload: JSON.stringify({\n        source: \"aws.sqs\",\n        message: data.Messages[0]\n      })\n    }, function(e) {\n      if (e) {\n        console.log(e);\n        return d();\n      }\n\n      return hq(q, f, d, t);\n    })\n  })\n}\nexports.handler = function(event, context) {\n  var t = Date.now() + 295000;\n  var r = 9;\n  var d = function() {\n    r = r - 1;\n    if (r == 0) {\n      console.log('done');\n      context.done();\n    }\n  }\n  for (var i = 0; i < c.length; i += 2) {\n    hq(c[i], c[i+1], d, t);\n  }\n}\n"
               ]
             ]
           }
