@@ -32,12 +32,13 @@ You can also use the console, if you are so inclined.
 
 Your functions specified in `QueueToFunctionMapping` will now receive everything
 sent to their respective queues. The payload is an object with `source` set to
-`aws.sqs` and `message` as the actual message from SQS:
+`aws.sqs` and `Message` as the actual message from SQS:
 
 ```json
 {
     "source": "aws.sqs",
-    "message": {
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/1234567/my-queue",
+    "Message": {
         "MessageId": "2b2ea032-5d3d-4a17-b38c-92bece3ad7ce",
         "ReceiptHandle": "AQEB8t7sz7fgeAalKraYO3brB2+r0d3p18RE3G6J9k9GmRFODibL64oget5R6NaRJDoYrwHNtLutKOiY3Ggls2F6LRJFKLZhLbr3fSd+Hg6KiECu4tfdyAZxAwj2/X5QIieu0dtCMIEujHSDn7Xzz9L5hNW/uCB7Tx7Km0Sal077KE4h4CCHMvZDza8bNzmFTXvfRj5+odG80oLtir0w+lwx+DQYnkIZJxvVRLkfOspU2/84/ye4VZkr8pOD7xIGtgzU/Z7pdzTXeKw0WSfHQoQ661qBcqBHhMTjXXZ0WzsYHW1HPqtSwqA760nZfh0RXRjo9AGFsXYmtnQoFs64PCJ1hZ2u+N+azHChx4Ma+PtT6pgUfkCzrYG5Gq/BaR+RmPsW",
         "MD5OfBody": "abecffaa52f529a2b83b6612a7964b02",

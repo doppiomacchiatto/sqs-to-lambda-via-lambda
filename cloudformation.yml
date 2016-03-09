@@ -256,7 +256,8 @@ Resources:
                     InvocationType: "Event",
                     Payload: JSON.stringify({
                       source: "aws.sqs",
-                      message: data.Messages[0]
+                      QueueUrl: q,
+                      Message: data.Messages[0]
                     })
                   }, function(e) {
                     if (e) {
