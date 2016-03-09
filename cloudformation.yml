@@ -5,68 +5,13 @@ Description: |
   for every item from 1Queue.
 
 Parameters:
-  1Queue:
-    Description: The URL of the first SQS queue to process.
+  QueueToFunctionMapping:
+    Description: |
+      The list of SQS queue URLs and corresponding Lambda function
+      names. Separate queue urls, function names, and pairs with commas:
+      <queue_url_1>,<function_1>,<queue_url_2>,<function_2>.
+      There must be an odd number of commas.
     Type: String
-  1Function:
-    Description: The name of the function to invoke from 1_Queue.
-    Type: String
-
-  2Queue:
-    Type: String
-    Default: ""
-  2Function:
-    Type: String
-    Default: ""
-
-  3Queue:
-    Type: String
-    Default: ""
-  3Function:
-    Type: String
-    Default: ""
-
-  4Queue:
-    Type: String
-    Default: ""
-  4Function:
-    Type: String
-    Default: ""
-
-  5Queue:
-    Type: String
-    Default: ""
-  5Function:
-    Type: String
-    Default: ""
-
-  6Queue:
-    Type: String
-    Default: ""
-  6Function:
-    Type: String
-    Default: ""
-
-  7Queue:
-    Type: String
-    Default: ""
-  7Function:
-    Type: String
-    Default: ""
-
-  8Queue:
-    Type: String
-    Default: ""
-  8Function:
-    Type: String
-    Default: ""
-
-  9Queue:
-    Type: String
-    Default: ""
-  9Function:
-    Type: String
-    Default: ""
 
 Outputs: {}
 
@@ -146,8 +91,8 @@ Resources:
 
   ### Custom Resource
 
-  SetupCloudWatchEvents:
-    Type: Custom::SetupCloudWatchEvents
+  CloudWatchEvent:
+    Type: Custom::CloudWatchEvent
     Properties:
       ServiceToken:
         Fn::GetAtt:
@@ -249,7 +194,7 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - SetupCloudWatchEvents
+          - CloudWatchEvent
           - RuleArn
 
   SQSToLambdaFunction:
@@ -279,26 +224,7 @@ Resources:
           Fn::Join:
           - ""
           - - var c = "
-            - Fn::Join:
-              - ","
-              - - Ref: 1Queue
-                - Ref: 1Function
-                - Ref: 2Queue
-                - Ref: 2Function
-                - Ref: 3Queue
-                - Ref: 3Function
-                - Ref: 4Queue
-                - Ref: 4Function
-                - Ref: 5Queue
-                - Ref: 5Function
-                - Ref: 6Queue
-                - Ref: 6Function
-                - Ref: 7Queue
-                - Ref: 7Function
-                - Ref: 8Queue
-                - Ref: 8Function
-                - Ref: 9Queue
-                - Ref: 9Function
+            - Ref: QueueToFunctionMapping
             - |
               ".split(",");
               var AWS = require('aws-sdk');

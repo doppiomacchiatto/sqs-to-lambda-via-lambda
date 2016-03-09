@@ -1,77 +1,9 @@
 {
   "Description": "Creates a Lambda function that invokes other Lambda functions with\nSQS events. The mapping of queues to functions is in the\nXQueue/XFunction parameters. For example, 1Function will be invoked\nfor every item from 1Queue.\n",
   "Parameters": {
-    "1Queue": {
-      "Description": "The URL of the first SQS queue to process.",
+    "QueueToFunctionMapping": {
+      "Description": "The list of SQS queue URLs and corresponding Lambda function\nnames. Separate queue urls, function names, and pairs with commas:\n<queue_url_1>,<function_1>,<queue_url_2>,<function_2>.\nThere must be an odd number of commas.\n",
       "Type": "String"
-    },
-    "1Function": {
-      "Description": "The name of the function to invoke from 1_Queue.",
-      "Type": "String"
-    },
-    "2Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "2Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "3Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "3Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "4Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "4Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "5Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "5Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "6Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "6Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "7Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "7Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "8Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "8Function": {
-      "Type": "String",
-      "Default": ""
-    },
-    "9Queue": {
-      "Type": "String",
-      "Default": ""
-    },
-    "9Function": {
-      "Type": "String",
-      "Default": ""
     }
   },
   "Outputs": {
@@ -183,8 +115,8 @@
         ]
       }
     },
-    "SetupCloudWatchEvents": {
-      "Type": "Custom::SetupCloudWatchEvents",
+    "CloudWatchEvent": {
+      "Type": "Custom::CloudWatchEvent",
       "Properties": {
         "ServiceToken": {
           "Fn::GetAtt": [
@@ -235,7 +167,7 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "SetupCloudWatchEvents",
+            "CloudWatchEvent",
             "RuleArn"
           ]
         }
@@ -262,65 +194,7 @@
               [
                 "var c = \"",
                 {
-                  "Fn::Join": [
-                    ",",
-                    [
-                      {
-                        "Ref": "1Queue"
-                      },
-                      {
-                        "Ref": "1Function"
-                      },
-                      {
-                        "Ref": "2Queue"
-                      },
-                      {
-                        "Ref": "2Function"
-                      },
-                      {
-                        "Ref": "3Queue"
-                      },
-                      {
-                        "Ref": "3Function"
-                      },
-                      {
-                        "Ref": "4Queue"
-                      },
-                      {
-                        "Ref": "4Function"
-                      },
-                      {
-                        "Ref": "5Queue"
-                      },
-                      {
-                        "Ref": "5Function"
-                      },
-                      {
-                        "Ref": "6Queue"
-                      },
-                      {
-                        "Ref": "6Function"
-                      },
-                      {
-                        "Ref": "7Queue"
-                      },
-                      {
-                        "Ref": "7Function"
-                      },
-                      {
-                        "Ref": "8Queue"
-                      },
-                      {
-                        "Ref": "8Function"
-                      },
-                      {
-                        "Ref": "9Queue"
-                      },
-                      {
-                        "Ref": "9Function"
-                      }
-                    ]
-                  ]
+                  "Ref": "QueueToFunctionMapping"
                 },
                 "\".split(\",\");\nvar AWS = require('aws-sdk');\nvar sqs = new AWS.SQS();\nvar lambda = new AWS.Lambda();\nfunction hq(q, f, d, t) {\n  if (t < Date.now()) {\n    return d();\n  }\n  if (q == \"\" || f == \"\") {\n    return d();\n  }\n  sqs.receiveMessage({\n    QueueUrl: q,\n    MaxNumberOfMessages: 1,\n    WaitTimeSeconds: 1\n  }, function(e, data) {\n    if (e) {\n      console.log(e);\n      return d();\n    }\n\n    if (!data.Messages || data.Messages.length === 0) {\n      return hq(q, f, d, t);\n    }\n\n    lambda.invoke({\n      FunctionName: f,\n      InvocationType: \"Event\",\n      Payload: JSON.stringify({\n        source: \"aws.sqs\",\n        message: data.Messages[0]\n      })\n    }, function(e) {\n      if (e) {\n        console.log(e);\n        return d();\n      }\n\n      return hq(q, f, d, t);\n    })\n  })\n}\nexports.handler = function(event, context) {\n  var t = Date.now() + 295000;\n  var r = 9;\n  var d = function() {\n    r = r - 1;\n    if (r == 0) {\n      console.log('done');\n      context.done();\n    }\n  }\n  for (var i = 0; i < c.length; i += 2) {\n    hq(c[i], c[i+1], d, t);\n  }\n}\n"
               ]

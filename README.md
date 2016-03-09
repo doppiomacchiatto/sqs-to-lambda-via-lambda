@@ -22,18 +22,17 @@ First, create the CloudFormation stack. Inside a clone of this project:
 aws --region us-east-1 cloudformation create-stack                            \
   --stack-name sqs-to-lambda                                                  \
   --template-body file://cloudformation.json                                  \
-  --parameters ParameterKey=1Queue,ParameterValue=<queue url>                 \
-               ParameterKey=1Function,ParameterValue=<lambda function name>   \
+  --parameters 'ParameterKey=QueueToFunctionMapping,ParameterValue="<queue url 1>,<function 1>,<queue url 2>,<function 2>,..."' \
   --capabilities CAPABILITY_IAM
 ```
 
-(Specify up to 9 Queue/Function pairs.)
+(Be careful about correctly quoting the `QueueToFunctionMapping` parameter.)
 
 You can also use the console, if you are so inclined.
 
-Your function specified as 1Function will now receive everything sent to 1Queue.
-The payload is an object with `source` set to `aws.sqs` and `message` as the actual
-message from SQS:
+Your functions specified in `QueueToFunctionMapping` will now receive everything
+sent to their respective queues. The payload is an object with `source` set to
+`aws.sqs` and `message` as the actual message from SQS:
 
 ```json
 {
