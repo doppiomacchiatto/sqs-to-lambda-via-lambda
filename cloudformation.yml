@@ -269,12 +269,12 @@ Resources:
                 })
               }
               exports.handler = function(event, context) {
+                if (c.length === 0) { return context.done(); }
                 var t = Date.now() + 295000;
-                var r = 9;
+                var r = c.length / 2;
                 var d = function() {
                   r = r - 1;
                   if (r == 0) {
-                    console.log('done');
                     context.done();
                   }
                 }
