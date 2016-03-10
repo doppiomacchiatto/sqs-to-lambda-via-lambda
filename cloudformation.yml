@@ -1,8 +1,6 @@
 Description: |
   Creates a Lambda function that invokes other Lambda functions with
-  SQS events. The mapping of queues to functions is in the
-  XQueue/XFunction parameters. For example, 1Function will be invoked
-  for every item from 1Queue.
+  SQS events.
 
 Parameters:
   QueueToFunctionMapping:
