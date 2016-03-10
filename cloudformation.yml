@@ -13,9 +13,27 @@ Parameters:
       There must be an odd number of commas.
     Type: String
 
+  Frequency:
+    Description: |
+      How often you want the specified SQS queues checked. If you choose
+      "Continuous", a Lambda function will be constantly running, waiting for
+      items in the queue. If you choose "1Minute", the Lambda function will
+      only run every minute and check every queue. This can result in drastically
+      reduced Lambda cost, at the expense of waiting up to a minute for items
+      to become visibile in the queue before being processed by your functions.
+    Type: String
+    Default: Continuous
+    AllowedValues:
+      - Continuous
+      - 1Minute
+
 Outputs: {}
 
-Conditions: {}
+Conditions:
+  EnableMinutePoll:
+    Fn::Equals:
+      - Ref: Frequency
+      - 1Minute
 
 Resources:
 
@@ -26,7 +44,7 @@ Resources:
     Properties:
       Path: /
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -35,7 +53,7 @@ Resources:
       Policies:
         - PolicyName: lambda-to-sqs-policy
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -62,7 +80,7 @@ Resources:
     Properties:
       Path: /
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -71,7 +89,7 @@ Resources:
       Policies:
         - PolicyName: setup-cloudwatch-events
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -91,9 +109,9 @@ Resources:
 
   ### Custom Resource
 
-  CloudWatchEvent:
+  CloudWatchEvent1:
     Type: Custom::CloudWatchEvent
-    Properties:
+    Properties: &EVENT_PROPERTIES
       ServiceToken:
         Fn::GetAtt:
           - SetupCloudwatchEventsFunction
@@ -106,6 +124,40 @@ Resources:
         Fn::GetAtt:
           - SQSToLambdaFunction
           - Arn
+      RuleNamePrefix: rule1-
+      ScheduleExpression: cron(0/5 * * * ? *)
+
+  CloudWatchEvent2:
+    Type: Custom::CloudWatchEvent
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *EVENT_PROPERTIES
+      RuleNamePrefix: rule2-
+      ScheduleExpression: cron(1/5 * * * ? *)
+
+  CloudWatchEvent3:
+    Type: Custom::CloudWatchEvent
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *EVENT_PROPERTIES
+      RuleNamePrefix: rule3-
+      ScheduleExpression: cron(2/5 * * * ? *)
+
+  CloudWatchEvent4:
+    Type: Custom::CloudWatchEvent
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *EVENT_PROPERTIES
+      RuleNamePrefix: rule4-
+      ScheduleExpression: cron(3/5 * * * ? *)
+
+  CloudWatchEvent5:
+    Type: Custom::CloudWatchEvent
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *EVENT_PROPERTIES
+      RuleNamePrefix: rule5-
+      ScheduleExpression: cron(4/5 * * * ? *)
 
   ### Lambda Functions
 
@@ -122,79 +174,58 @@ Resources:
       Runtime: nodejs
       Timeout: 300
       Code:
-        ZipFile: |
-          var AWS = require('aws-sdk');
-          var response = require('cfn-response');
-          exports.handler = function(event, context) {
-            var targetFunction = event.ResourceProperties.TargetFunction;
-            var ruleName = "rule-" + targetFunction;
-            var events = new AWS.CloudWatchEvents();
-            if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-              events.putRule({
-                Name: ruleName,
-                ScheduleExpression: "rate(5 minutes)",
-                State: "ENABLED"
-              }, function(e, data) {
-                if (e) {
-                  console.log(e);
-                  response.send(event, context, response.FAILED, {});
-                  return;
-                }
-                var ruleArn = data.RuleArn;
-                events.putTargets({
-                  Rule: ruleName,
-                  Targets: [{
-                    Id: ruleName,
-                    Arn: event.ResourceProperties.TargetFunctionArn
-                  }]
-                }, function(e, data) {
-                  if (e) {
-                    console.log(e);
-                    response.send(event, context, response.FAILED, {});
-                    return;
-                  }
+        ZipFile: "<inserted by build script>"
 
-                  response.send(event, context, response.SUCCESS, {
-                    RuleArn: ruleArn
-                  }, ruleName);
-                })
-              });
-            } else if (event.RequestType === 'Delete') {
-              events.removeTargets({
-                Rule: ruleName,
-                Ids: [ ruleName ]
-              }, function(e, data) {
-                if (e) {
-                  console.log(e);
-                  response.send(event, context, response.FAILED, {});
-                  return;
-                }
-
-                events.deleteRule({
-                  Name: ruleName
-                }, function(e, data) {
-                  if (e) {
-                    console.log(e);
-                    response.send(event, context, response.FAILED, {});
-                    return;
-                  }
-
-                  response.send(event, context, response.SUCCESS, {}, ruleName);
-                })
-              });
-            }
-          }
-
-  SQSToLambdaFunctionPermission:
+  SQSToLambdaFunctionPermission1:
     Type: AWS::Lambda::Permission
-    Properties:
+    Properties: &PERMISSION_PROPERTIES
       Action: lambda:InvokeFunction
       FunctionName:
         Ref: SQSToLambdaFunction
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent
+          - CloudWatchEvent1
+          - RuleArn
+
+  SQSToLambdaFunctionPermission2:
+    Type: AWS::Lambda::Permission
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *PERMISSION_PROPERTIES
+      SourceArn:
+        Fn::GetAtt:
+          - CloudWatchEvent2
+          - RuleArn
+
+  SQSToLambdaFunctionPermission3:
+    Type: AWS::Lambda::Permission
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *PERMISSION_PROPERTIES
+      SourceArn:
+        Fn::GetAtt:
+          - CloudWatchEvent3
+          - RuleArn
+
+  SQSToLambdaFunctionPermission4:
+    Type: AWS::Lambda::Permission
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *PERMISSION_PROPERTIES
+      SourceArn:
+        Fn::GetAtt:
+          - CloudWatchEvent4
+          - RuleArn
+
+  SQSToLambdaFunctionPermission5:
+    Type: AWS::Lambda::Permission
+    Condition: EnableMinutePoll
+    Properties:
+      <<: *PERMISSION_PROPERTIES
+      SourceArn:
+        Fn::GetAtt:
+          - CloudWatchEvent5
           - RuleArn
 
   SQSToLambdaFunction:
@@ -223,63 +254,9 @@ Resources:
           # behind on the queue.)
           Fn::Join:
           - ""
-          - - var c = "
+          - - 'var CONFIG = "'
             - Ref: QueueToFunctionMapping
-            - |
-              ".split(",");
-              var AWS = require('aws-sdk');
-              var sqs = new AWS.SQS();
-              var lambda = new AWS.Lambda();
-              function hq(q, f, d, t) {
-                if (t < Date.now()) {
-                  return d();
-                }
-                if (q == "" || f == "") {
-                  return d();
-                }
-                sqs.receiveMessage({
-                  QueueUrl: q,
-                  MaxNumberOfMessages: 1,
-                  WaitTimeSeconds: 1
-                }, function(e, data) {
-                  if (e) {
-                    console.log(e);
-                    return d();
-                  }
-
-                  if (!data.Messages || data.Messages.length === 0) {
-                    return hq(q, f, d, t);
-                  }
-
-                  lambda.invoke({
-                    FunctionName: f,
-                    InvocationType: "Event",
-                    Payload: JSON.stringify({
-                      source: "aws.sqs",
-                      QueueUrl: q,
-                      Message: data.Messages[0]
-                    })
-                  }, function(e) {
-                    if (e) {
-                      console.log(e);
-                      return d();
-                    }
-
-                    return hq(q, f, d, t);
-                  })
-                })
-              }
-              exports.handler = function(event, context) {
-                if (c.length === 0) { return context.done(); }
-                var t = Date.now() + 295000;
-                var r = c.length / 2;
-                var d = function() {
-                  r = r - 1;
-                  if (r == 0) {
-                    context.done();
-                  }
-                }
-                for (var i = 0; i < c.length; i += 2) {
-                  hq(c[i], c[i+1], d, t);
-                }
-              }
+            - '".split(","); var ONCE = "'
+            - Ref: Frequency
+            - '" === "1Minute";'
+            - "<inserted by build script>"

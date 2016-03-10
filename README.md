@@ -6,10 +6,15 @@ but that requires running an instance, and who wants to do that?
 
 Running a Lambda function (128MB) full-time costs about $5.39/month, and a t2.nano
 (on demand) costs $4.68. Surely $0.71 is worth the coolness of not running a
-boring EC2 instance.
+boring EC2 instance. (There's a cheaper option too, keep reading.)
 
 The supplied CloudFormation template will set up a Lambda function that reads
-from SQS queues, and invokes Lambda functions with the payloads.
+from SQS queues, and invokes Lambda functions with the payloads. By default it will
+run a Lambda function continuously, polling your queues constantly for new items.
+
+You can also configure it to poll your queues once a minute, reducing Lambda
+costs to almost nothing, at the expense of waiting up to 60s to receive new queue
+items.
 
 One day, hopefully soon, Lambda will likely support SQS as a native event source,
 and then this will be completely unnecessary. :fingerscrossed:
@@ -26,7 +31,8 @@ aws --region us-east-1 cloudformation create-stack                            \
   --capabilities CAPABILITY_IAM
 ```
 
-(Be careful about correctly quoting the `QueueToFunctionMapping` parameter.)
+If you'd like the every-minute, cheaper option, add `ParameterKey=Frequency,ParameterValue=1Minute`
+to the `--parameters` option.
 
 You can also use the console, if you are so inclined.
 
@@ -52,18 +58,45 @@ sent to their respective queues. The payload is an object with `source` set to
 
 ## Questions
 
+### How does it work?
+
+The supplied CloudFormation template will create a Lambda function that knows
+how to pull from queues, and invoke other Lambda functions. The function is
+triggered by CloudWatch Events, also set up by the CloudFormation template.
+CloudWatch Events are not yet supported directly by CloudFormation, so another
+Lambda function is supplied to create them as a custom resource.
+
+If you choose Continuous frequency, the function is invoked every 5 minutes, and
+runs for almost 5 minutes, constantly polling.
+
+If you choose 1Minute frequence, the function is invoked every minute, but exits
+once the queue returns 0 items to process.
+
 ### What's up with the `cloudformation.yml` file?
 
 Yaml is a much easier format to write these in. Trust me.
 
-### Did you seriously write node code directly in the CloudFormation template?
+### What's up with the Javascript in `cloudformation.json`?
 
-Yes I did. What's it to you?
+Embedding Javascript in the CloudFormation template is an easy way to make the
+template self-contained. It also allows us to dynamically inject the configuration
+into the SQS poller function. The javascript in the `cloudformation.json` file
+is minimized from `sqs-to-lambda.js` and `cloudwatch-rule-custom-event.js`.
 
-(If you have a better way to dynamically get the config into the Lambda
-function, please let me know.)
+We minimize the Javascript because there is a 2KB limit to inline code in
+CloudFormation templates.
+
+## Building
+
+The `cloudformation.json` file is a build artifact - don't edit it directly!
+To build:
+
+```
+$ npm install
+$ npm run build
+```
 
 ## Contributing
 
-Please only modify the `cloudformation.yml` file, run `make`, and commit
-both the `cloudformation.*` files. Then submit a pull request.
+Make your changes, build a new `cloudformation.json` file (see above), and
+submit a pull request.
