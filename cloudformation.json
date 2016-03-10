@@ -1,1 +1,402 @@
-{"Description":"Creates a Lambda function that invokes other Lambda functions with\nSQS events. The mapping of queues to functions is in the\nXQueue/XFunction parameters. For example, 1Function will be invoked\nfor every item from 1Queue.\n","Parameters":{"QueueToFunctionMapping":{"Description":"The list of SQS queue URLs and corresponding Lambda function\nnames. Separate queue urls, function names, and pairs with commas:\n<queue_url_1>,<function_1>,<queue_url_2>,<function_2>.\nThere must be an odd number of commas.\n","Type":"String"},"Frequency":{"Description":"How often you want the specified SQS queues checked. If you choose\n\"Continuous\", a Lambda function will be constantly running, waiting for\nitems in the queue. If you choose \"1Minute\", the Lambda function will\nonly run every minute and check every queue. This can result in drastically\nreduced Lambda cost, at the expense of waiting up to a minute for items\nto become visibile in the queue before being processed by your functions.\n","Type":"String","Default":"Continuous","AllowedValues":["Continuous","1Minute"]}},"Outputs":{},"Conditions":{"EnableMinutePoll":{"Fn::Equals":[{"Ref":"Frequency"},"1Minute"]}},"Resources":{"SQSToLambdaRole":{"Type":"AWS::IAM::Role","Properties":{"Path":"/","AssumeRolePolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]},"Policies":[{"PolicyName":"lambda-to-sqs-policy","PolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["sqs:ReceiveMessage"],"Resource":["*"]},{"Effect":"Allow","Action":["lambda:Invoke*"],"Resource":["*"]},{"Effect":"Allow","Action":["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],"Resource":"arn:aws:logs:*:*:*"}]}}]}},"SetupCloudwatchEventsRole":{"Type":"AWS::IAM::Role","Properties":{"Path":"/","AssumeRolePolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]},"Policies":[{"PolicyName":"setup-cloudwatch-events","PolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["events:PutRule","events:PutTargets","events:RemoveTargets","events:DeleteRule"],"Resource":["*"]},{"Effect":"Allow","Action":["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],"Resource":"arn:aws:logs:*:*:*"}]}}]}},"CloudWatchEvent1":{"Type":"Custom::CloudWatchEvent","Properties":{"ServiceToken":{"Fn::GetAtt":["SetupCloudwatchEventsFunction","Arn"]},"Region":{"Ref":"AWS::Region"},"TargetFunction":{"Ref":"SQSToLambdaFunction"},"TargetFunctionArn":{"Fn::GetAtt":["SQSToLambdaFunction","Arn"]},"RuleNamePrefix":"rule0-","ScheduleExpression":"cron(0/5 * * * ? *)"}},"CloudWatchEvent2":{"Type":"Custom::CloudWatchEvent","Condition":"EnableMinutePoll","Properties":{"ServiceToken":{"Fn::GetAtt":["SetupCloudwatchEventsFunction","Arn"]},"Region":{"Ref":"AWS::Region"},"TargetFunction":{"Ref":"SQSToLambdaFunction"},"TargetFunctionArn":{"Fn::GetAtt":["SQSToLambdaFunction","Arn"]},"RuleNamePrefix":"rule1-","ScheduleExpression":"cron(1/5 * * * ? *)"}},"CloudWatchEvent3":{"Type":"Custom::CloudWatchEvent","Condition":"EnableMinutePoll","Properties":{"ServiceToken":{"Fn::GetAtt":["SetupCloudwatchEventsFunction","Arn"]},"Region":{"Ref":"AWS::Region"},"TargetFunction":{"Ref":"SQSToLambdaFunction"},"TargetFunctionArn":{"Fn::GetAtt":["SQSToLambdaFunction","Arn"]},"RuleNamePrefix":"rule3-","ScheduleExpression":"cron(2/5 * * * ? *)"}},"CloudWatchEvent4":{"Type":"Custom::CloudWatchEvent","Condition":"EnableMinutePoll","Properties":{"ServiceToken":{"Fn::GetAtt":["SetupCloudwatchEventsFunction","Arn"]},"Region":{"Ref":"AWS::Region"},"TargetFunction":{"Ref":"SQSToLambdaFunction"},"TargetFunctionArn":{"Fn::GetAtt":["SQSToLambdaFunction","Arn"]},"RuleNamePrefix":"rule4-","ScheduleExpression":"cron(3/5 * * * ? *)"}},"CloudWatchEvent5":{"Type":"Custom::CloudWatchEvent","Condition":"EnableMinutePoll","Properties":{"ServiceToken":{"Fn::GetAtt":["SetupCloudwatchEventsFunction","Arn"]},"Region":{"Ref":"AWS::Region"},"TargetFunction":{"Ref":"SQSToLambdaFunction"},"TargetFunctionArn":{"Fn::GetAtt":["SQSToLambdaFunction","Arn"]},"RuleNamePrefix":"rule5-","ScheduleExpression":"cron(4/5 * * * ? *)"}},"SetupCloudwatchEventsFunction":{"Type":"AWS::Lambda::Function","Properties":{"Description":"Creates a 5 minute CloudWatch rule on the specified function.","Handler":"index.handler","MemorySize":128,"Role":{"Fn::GetAtt":["SetupCloudwatchEventsRole","Arn"]},"Runtime":"nodejs","Timeout":300,"Code":{"ZipFile":"var AWS=require(\"aws-sdk\"),response=require(\"cfn-response\");exports.handler=function(e,s){var r=e.ResourceProperties.TargetFunction,o=e.ResourceProperties.RuleNamePrefix+r,n=new AWS.CloudWatchEvents;\"Create\"===e.RequestType||\"Update\"===e.RequestType?n.putRule({Name:o,ScheduleExpression:e.ResourceProperties.ScheduleExpression,State:\"ENABLED\"},function(r,t){if(r)return console.log(r),void response.send(e,s,response.FAILED,{});var u=t.RuleArn;n.putTargets({Rule:o,Targets:[{Id:o,Arn:e.ResourceProperties.TargetFunctionArn}]},function(r,n){return r?(console.log(r),void response.send(e,s,response.FAILED,{})):void response.send(e,s,response.SUCCESS,{RuleArn:u},o)})}):\"Delete\"===e.RequestType&&n.removeTargets({Rule:o,Ids:[o]},function(r,t){return r?(console.log(r),void response.send(e,s,response.FAILED,{})):void n.deleteRule({Name:o},function(r,n){return r?(console.log(r),void response.send(e,s,response.FAILED,{})):void response.send(e,s,response.SUCCESS,{},o)})})};"}}},"SQSToLambdaFunctionPermission1":{"Type":"AWS::Lambda::Permission","Properties":{"Action":"lambda:InvokeFunction","FunctionName":{"Ref":"SQSToLambdaFunction"},"Principal":"events.amazonaws.com","SourceArn":{"Fn::GetAtt":["CloudWatchEvent1","RuleArn"]}}},"SQSToLambdaFunctionPermission2":{"Type":"AWS::Lambda::Permission","Condition":"EnableMinutePoll","Properties":{"Action":"lambda:InvokeFunction","FunctionName":{"Ref":"SQSToLambdaFunction"},"Principal":"events.amazonaws.com","SourceArn":{"Fn::GetAtt":["CloudWatchEvent2","RuleArn"]}}},"SQSToLambdaFunctionPermission3":{"Type":"AWS::Lambda::Permission","Condition":"EnableMinutePoll","Properties":{"Action":"lambda:InvokeFunction","FunctionName":{"Ref":"SQSToLambdaFunction"},"Principal":"events.amazonaws.com","SourceArn":{"Fn::GetAtt":["CloudWatchEvent3","RuleArn"]}}},"SQSToLambdaFunctionPermission4":{"Type":"AWS::Lambda::Permission","Condition":"EnableMinutePoll","Properties":{"Action":"lambda:InvokeFunction","FunctionName":{"Ref":"SQSToLambdaFunction"},"Principal":"events.amazonaws.com","SourceArn":{"Fn::GetAtt":["CloudWatchEvent4","RuleArn"]}}},"SQSToLambdaFunctionPermission5":{"Type":"AWS::Lambda::Permission","Condition":"EnableMinutePoll","Properties":{"Action":"lambda:InvokeFunction","FunctionName":{"Ref":"SQSToLambdaFunction"},"Principal":"events.amazonaws.com","SourceArn":{"Fn::GetAtt":["CloudWatchEvent5","RuleArn"]}}},"SQSToLambdaFunction":{"Type":"AWS::Lambda::Function","Properties":{"Description":"Invokes Lambda functions with items from SQS queues.","Handler":"index.handler","MemorySize":128,"Role":{"Fn::GetAtt":["SQSToLambdaRole","Arn"]},"Runtime":"nodejs","Timeout":300,"Code":{"ZipFile":{"Fn::Join":["",["var CONFIG = \"",{"Ref":"QueueToFunctionMapping"},"\".split(\",\"); var ONCE = \"",{"Ref":"Frequency"},"\" === \"1Minute\";","function pollQueue(e,n,o,s){return o()<5e3?s():\"\"==e||\"\"==n?s():void sqs.receiveMessage({QueueUrl:e,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(i,l){return i?(console.log(i),s()):l.Messages&&0!==l.Messages.length?void lambda.invoke({FunctionName:n,InvocationType:\"Event\",Payload:JSON.stringify({source:\"aws.sqs\",QueueUrl:e,Message:l.Messages[0]})},function(i){return i?(console.log(i),s()):pollQueue(e,n,o,s)}):once?s():pollQueue(e,n,o,s)})}var AWS=require(\"aws-sdk\"),sqs=new AWS.SQS,lambda=new AWS.Lambda,config=CONFIG,once=ONCE;exports.handler=function(e,n){if(0===config.length)return n.done();for(var o=config.length/2,s=function(){o-=1,0==o&&(console.log(\"exiting\"),n.done())},i=0;i<config.length;i+=2)pollQueue(config[i],config[i+1],n.getRemainingTimeInMillis,s)};"]]}}}}}}
+{
+  "Description": "Creates a Lambda function that invokes other Lambda functions with\nSQS events.\n",
+  "Parameters": {
+    "QueueToFunctionMapping": {
+      "Description": "The list of SQS queue URLs and corresponding Lambda function\nnames. Separate queue urls, function names, and pairs with commas:\n<queue_url_1>,<function_1>,<queue_url_2>,<function_2>.\nThere must be an odd number of commas.\n",
+      "Type": "String"
+    },
+    "Frequency": {
+      "Description": "How often you want the specified SQS queues checked. If you choose\n\"Continuous\", a Lambda function will be constantly running, waiting for\nitems in the queue. If you choose \"1Minute\", the Lambda function will\nonly run every minute and check every queue. This can result in drastically\nreduced Lambda cost, at the expense of waiting up to a minute for items\nto become visibile in the queue before being processed by your functions.\n",
+      "Type": "String",
+      "Default": "Continuous",
+      "AllowedValues": [
+        "Continuous",
+        "1Minute"
+      ]
+    }
+  },
+  "Outputs": {},
+  "Conditions": {
+    "EnableMinutePoll": {
+      "Fn::Equals": [
+        {
+          "Ref": "Frequency"
+        },
+        "1Minute"
+      ]
+    }
+  },
+  "Resources": {
+    "SQSToLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "lambda-to-sqs-policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sqs:ReceiveMessage"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:Invoke*"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "SetupCloudwatchEventsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "setup-cloudwatch-events",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "events:PutRule",
+                    "events:PutTargets",
+                    "events:RemoveTargets",
+                    "events:DeleteRule"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CloudWatchEvent1": {
+      "Type": "Custom::CloudWatchEvent",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        },
+        "RuleNamePrefix": "rule1-",
+        "ScheduleExpression": "cron(0/5 * * * ? *)"
+      }
+    },
+    "CloudWatchEvent2": {
+      "Type": "Custom::CloudWatchEvent",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        },
+        "RuleNamePrefix": "rule2-",
+        "ScheduleExpression": "cron(1/5 * * * ? *)"
+      }
+    },
+    "CloudWatchEvent3": {
+      "Type": "Custom::CloudWatchEvent",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        },
+        "RuleNamePrefix": "rule3-",
+        "ScheduleExpression": "cron(2/5 * * * ? *)"
+      }
+    },
+    "CloudWatchEvent4": {
+      "Type": "Custom::CloudWatchEvent",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        },
+        "RuleNamePrefix": "rule4-",
+        "ScheduleExpression": "cron(3/5 * * * ? *)"
+      }
+    },
+    "CloudWatchEvent5": {
+      "Type": "Custom::CloudWatchEvent",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsFunction",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "TargetFunction": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "SQSToLambdaFunction",
+            "Arn"
+          ]
+        },
+        "RuleNamePrefix": "rule5-",
+        "ScheduleExpression": "cron(4/5 * * * ? *)"
+      }
+    },
+    "SetupCloudwatchEventsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "Creates a 5 minute CloudWatch rule on the specified function.",
+        "Handler": "index.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "SetupCloudwatchEventsRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs",
+        "Timeout": 300,
+        "Code": {
+          "ZipFile": "var AWS=require(\"aws-sdk\"),events=new AWS.CloudWatchEvents,response=require(\"cfn-response\");exports.handler=function(e,s){var n=e.ResourceProperties.TargetFunction,r=e.ResourceProperties.RuleNamePrefix+n;\"Create\"===e.RequestType||\"Update\"===e.RequestType?events.putRule({Name:r,ScheduleExpression:e.ResourceProperties.ScheduleExpression,State:\"ENABLED\"},function(n,o){if(n)return console.log(n),void response.send(e,s,response.FAILED,{});var t=o.RuleArn;events.putTargets({Rule:r,Targets:[{Id:r,Arn:e.ResourceProperties.TargetFunctionArn}]},function(n,o){return n?(console.log(n),void response.send(e,s,response.FAILED,{})):void response.send(e,s,response.SUCCESS,{RuleArn:t},r)})}):\"Delete\"===e.RequestType&&events.removeTargets({Rule:r,Ids:[r]},function(n,o){return n?(console.log(n),void response.send(e,s,response.FAILED,{})):void events.deleteRule({Name:r},function(n,o){return n?(console.log(n),void response.send(e,s,response.FAILED,{})):void response.send(e,s,response.SUCCESS,{},r)})})};"
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent1",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission2": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent2",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission3": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent3",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission4": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent4",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunctionPermission5": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "EnableMinutePoll",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SQSToLambdaFunction"
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CloudWatchEvent5",
+            "RuleArn"
+          ]
+        }
+      }
+    },
+    "SQSToLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "Invokes Lambda functions with items from SQS queues.",
+        "Handler": "index.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "SQSToLambdaRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs",
+        "Timeout": 300,
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "",
+              [
+                "var CONFIG = \"",
+                {
+                  "Ref": "QueueToFunctionMapping"
+                },
+                "\".split(\",\"); var ONCE = \"",
+                {
+                  "Ref": "Frequency"
+                },
+                "\" === \"1Minute\";",
+                "function pollQueue(e,n,o,s){return o()<5e3?s():\"\"==e||\"\"==n?s():void sqs.receiveMessage({QueueUrl:e,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(i,l){return i?(console.log(i),s()):l.Messages&&0!==l.Messages.length?void lambda.invoke({FunctionName:n,InvocationType:\"Event\",Payload:JSON.stringify({source:\"aws.sqs\",QueueUrl:e,Message:l.Messages[0]})},function(i){return i?(console.log(i),s()):pollQueue(e,n,o,s)}):once?s():pollQueue(e,n,o,s)})}var AWS=require(\"aws-sdk\"),sqs=new AWS.SQS,lambda=new AWS.Lambda,config=CONFIG,once=ONCE;exports.handler=function(e,n){if(0===config.length)return n.done();for(var o=config.length/2,s=function(){o-=1,0==o&&(console.log(\"exiting\"),n.done())},i=0;i<config.length;i+=2)pollQueue(config[i],config[i+1],n.getRemainingTimeInMillis,s)};"
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

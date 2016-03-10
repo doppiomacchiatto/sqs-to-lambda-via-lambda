@@ -13,4 +13,4 @@ template.Resources.SetupCloudwatchEventsFunction.Properties.Code.ZipFile = cloud
 var ary = template.Resources.SQSToLambdaFunction.Properties.Code.ZipFile['Fn::Join'][1]
 ary[ary.length - 1] = sqsToLambda;
 
-fs.writeFileSync('./cloudformation.json', JSON.stringify(template), 'utf-8');
+fs.writeFileSync('./cloudformation.json', JSON.stringify(template, null, '  '), 'utf-8');

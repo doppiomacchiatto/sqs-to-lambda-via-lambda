@@ -69,7 +69,7 @@ Lambda function is supplied to create them as a custom resource.
 If you choose Continuous frequency, the function is invoked every 5 minutes, and
 runs for almost 5 minutes, constantly polling.
 
-If you choose 1Minute frequence, the function is invoked every minute, but exits
+If you choose 1Minute frequency, the function is invoked every minute, but exits
 once the queue returns 0 items to process.
 
 ### What's up with the `cloudformation.yml` file?
