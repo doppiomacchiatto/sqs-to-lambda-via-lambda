@@ -1,21 +1,23 @@
 var AWS = require('aws-sdk');
+var events = new AWS.CloudWatchEvents();
 var response = require('cfn-response');
 
 exports.handler = function(event, context) {
   var targetFunction = event.ResourceProperties.TargetFunction;
   var ruleName = event.ResourceProperties.RuleNamePrefix + targetFunction;
-  var events = new AWS.CloudWatchEvents();
+
   if (event.RequestType === 'Create' || event.RequestType === 'Update') {
     events.putRule({
       Name: ruleName,
       ScheduleExpression: event.ResourceProperties.ScheduleExpression,
       State: "ENABLED"
-    }, function(e, data) {
-      if (e) {
-        console.log(e);
+    }, function(err, data) {
+      if (err) {
+        console.log(err);
         response.send(event, context, response.FAILED, {});
         return;
       }
+
       var ruleArn = data.RuleArn;
       events.putTargets({
         Rule: ruleName,
@@ -23,9 +25,9 @@ exports.handler = function(event, context) {
           Id: ruleName,
           Arn: event.ResourceProperties.TargetFunctionArn
         }]
-      }, function(e, data) {
-        if (e) {
-          console.log(e);
+      }, function(err, data) {
+        if (err) {
+          console.log(err);
           response.send(event, context, response.FAILED, {});
           return;
         }
@@ -39,18 +41,18 @@ exports.handler = function(event, context) {
     events.removeTargets({
       Rule: ruleName,
       Ids: [ ruleName ]
-    }, function(e, data) {
-      if (e) {
-        console.log(e);
+    }, function(err, data) {
+      if (err) {
+        console.log(err);
         response.send(event, context, response.FAILED, {});
         return;
       }
 
       events.deleteRule({
         Name: ruleName
-      }, function(e, data) {
-        if (e) {
-          console.log(e);
+      }, function(err, data) {
+        if (err) {
+          console.log(err);
           response.send(event, context, response.FAILED, {});
           return;
         }
