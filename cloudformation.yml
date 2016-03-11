@@ -172,7 +172,7 @@ Resources:
       Runtime: nodejs
       Timeout: 300
       Code:
-        ZipFile: "<inserted by build script>"
+        ZipFile: "!js minify('./src/cloudwatch-rule-custom-event.js')"
 
   SQSToLambdaFunctionPermission1:
     Type: AWS::Lambda::Permission
@@ -257,4 +257,4 @@ Resources:
             - '".split(","); var ONCE = "'
             - Ref: Frequency
             - '" === "1Minute";'
-            - "<inserted by build script>"
+            - "!js minify('./src/sqs-to-lambda.js')"

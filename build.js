@@ -1,16 +1,20 @@
 var yaml = require('js-yaml');
 var UglifyJS = require("uglify-js");
 var fs = require('fs');
+var traverse = require('traverse');
 
-var sqsToLambda = UglifyJS.minify('./sqs-to-lambda.js').code;
-var cloudwatchRule = UglifyJS.minify('./cloudwatch-rule-custom-event.js').code;
+function minify(path) {
+  return UglifyJS.minify(path).code;
+}
 
 var templateBody = fs.readFileSync('./cloudformation.yml', 'utf-8');
 var template = yaml.safeLoad(templateBody);
 
-template.Resources.SetupCloudwatchEventsFunction.Properties.Code.ZipFile = cloudwatchRule;
-
-var ary = template.Resources.SQSToLambdaFunction.Properties.Code.ZipFile['Fn::Join'][1]
-ary[ary.length - 1] = sqsToLambda;
+traverse(template).forEach(function(val) {
+  if (typeof val === 'string' && val.indexOf('!js ') === 0) {
+    var code = val.slice(4);
+    this.update(eval(code));
+  }
+});
 
 fs.writeFileSync('./cloudformation.json', JSON.stringify(template, null, '  '), 'utf-8');
