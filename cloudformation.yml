@@ -240,16 +240,6 @@ Resources:
       Timeout: 300
       Code:
         ZipFile:
-          # Yes, this code is written inside YAML. What it does is
-          # start off pollers for each configured queue/function. The pollers
-          # will keep polling until they hit the "target time", which is 5
-          # seconds before the function timeout. When a poller finishes, it
-          # calls d() which keeps track of how many are running. When 0 are
-          # running, it exits cleanly with context.done(). Any errors from SQS
-          # or Lambda result in the poller stopping. This is probably not ideal.
-          # (The polling will resume the next time the function runs of course,
-          # but if the errors are throttling errors, it may mean we'll get way
-          # behind on the queue.)
           Fn::Join:
           - ""
           - - 'var CONFIG = "'
