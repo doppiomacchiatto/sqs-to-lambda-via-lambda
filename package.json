@@ -4,7 +4,6 @@
   },
   "dependencies": {
     "js-yaml": "^3.5.4",
-    "traverse": "^0.6.6",
     "uglify-js": "^2.6.2"
   }
 }
