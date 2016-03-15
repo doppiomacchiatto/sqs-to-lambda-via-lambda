@@ -5,7 +5,11 @@ var fs = require('fs');
 var MinifyYamlType = new yaml.Type('!minify', {
   kind: 'scalar',
   construct: function(data) {
-    return UglifyJS.minify(data).code;
+    return UglifyJS.minify(data, {
+      mangle: {
+        'toplevel': true
+      }
+    }).code;
   }
 });
 
