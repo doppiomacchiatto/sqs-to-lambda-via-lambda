@@ -1,5 +1,5 @@
 var AWS = require('aws-sdk');
-var events = new AWS.CloudWatchEvents();
+var cwe = new AWS.CloudWatchEvents();
 var response = require('cfn-response');
 
 exports.handler = function(event, context) {
@@ -7,7 +7,7 @@ exports.handler = function(event, context) {
   var ruleName = event.ResourceProperties.RuleNamePrefix + targetFunction;
 
   if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-    events.putRule({
+    cwe.putRule({
       Name: ruleName,
       ScheduleExpression: event.ResourceProperties.ScheduleExpression,
       State: "ENABLED"
@@ -19,7 +19,7 @@ exports.handler = function(event, context) {
       }
 
       var ruleArn = data.RuleArn;
-      events.putTargets({
+      cwe.putTargets({
         Rule: ruleName,
         Targets: [{
           Id: ruleName,
@@ -38,7 +38,7 @@ exports.handler = function(event, context) {
       })
     });
   } else if (event.RequestType === 'Delete') {
-    events.removeTargets({
+    cwe.removeTargets({
       Rule: ruleName,
       Ids: [ ruleName ]
     }, function(err, data) {
@@ -48,7 +48,7 @@ exports.handler = function(event, context) {
         return;
       }
 
-      events.deleteRule({
+      cwe.deleteRule({
         Name: ruleName
       }, function(err, data) {
         if (err) {
