@@ -63,8 +63,6 @@ sent to their respective queues. The payload is an object with `source` set to
 The supplied CloudFormation template will create a Lambda function that knows
 how to pull from queues, and invoke other Lambda functions. The function is
 triggered by CloudWatch Events, also set up by the CloudFormation template.
-CloudWatch Events are not yet supported directly by CloudFormation, so another
-Lambda function is supplied to create them as a custom resource.
 
 If you choose Continuous frequency, the function is invoked every 5 minutes, and
 runs for almost 5 minutes, constantly polling.
@@ -81,7 +79,7 @@ Yaml is a much easier format to write these in. Trust me.
 Embedding Javascript in the CloudFormation template is an easy way to make the
 template self-contained. It also allows us to dynamically inject the configuration
 into the SQS poller function. The javascript in the `cloudformation.json` file
-is minimized from `sqs-to-lambda.js` and `cloudwatch-rule-custom-event.js`.
+is minimized from `sqs-to-lambda.js`.
 
 We minimize the Javascript because there is a 2KB limit to inline code in
 CloudFormation templates.

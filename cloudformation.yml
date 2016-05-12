@@ -73,106 +73,49 @@ Resources:
                   - logs:PutLogEvents
                 Resource: arn:aws:logs:*:*:*
 
-  SetupCloudwatchEventsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      Path: /
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: setup-cloudwatch-events
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - events:PutRule
-                  - events:PutTargets
-                  - events:RemoveTargets
-                  - events:DeleteRule
-                Resource:
-                  - "*"
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+  ### CloudWatch Events
 
-
-  ### Custom Resource
-
-  CloudWatchEvent1:
-    Type: Custom::CloudWatchEvent
+  CloudWatchEvent01:
+    Type: AWS::Events::Rule
     Properties: &EVENT_PROPERTIES
-      ServiceToken:
-        Fn::GetAtt:
-          - SetupCloudwatchEventsFunction
-          - Arn
-      Region:
-        Ref: AWS::Region
-      TargetFunction:
-        Ref: SQSToLambdaFunction
-      TargetFunctionArn:
-        Fn::GetAtt:
-          - SQSToLambdaFunction
-          - Arn
-      RuleNamePrefix: rule1-
       ScheduleExpression: cron(0/5 * * * ? *)
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - SQSToLambdaFunction
+              - Arn
+          Id:
+            Ref: SQSToLambdaFunction
 
-  CloudWatchEvent2:
-    Type: Custom::CloudWatchEvent
+  CloudWatchEvent02:
+    Type: AWS::Events::Rule
     Condition: EnableMinutePoll
     Properties:
       <<: *EVENT_PROPERTIES
-      RuleNamePrefix: rule2-
       ScheduleExpression: cron(1/5 * * * ? *)
 
-  CloudWatchEvent3:
-    Type: Custom::CloudWatchEvent
+  CloudWatchEvent03:
+    Type: AWS::Events::Rule
     Condition: EnableMinutePoll
     Properties:
       <<: *EVENT_PROPERTIES
-      RuleNamePrefix: rule3-
       ScheduleExpression: cron(2/5 * * * ? *)
 
-  CloudWatchEvent4:
-    Type: Custom::CloudWatchEvent
+  CloudWatchEvent04:
+    Type: AWS::Events::Rule
     Condition: EnableMinutePoll
     Properties:
       <<: *EVENT_PROPERTIES
-      RuleNamePrefix: rule4-
       ScheduleExpression: cron(3/5 * * * ? *)
 
-  CloudWatchEvent5:
-    Type: Custom::CloudWatchEvent
+  CloudWatchEvent05:
+    Type: AWS::Events::Rule
     Condition: EnableMinutePoll
     Properties:
       <<: *EVENT_PROPERTIES
-      RuleNamePrefix: rule5-
       ScheduleExpression: cron(4/5 * * * ? *)
 
-  ### Lambda Functions
-
-  SetupCloudwatchEventsFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Description: Creates a 5 minute CloudWatch rule on the specified function.
-      Handler: index.handler
-      MemorySize: 128
-      Role:
-        Fn::GetAtt:
-          - SetupCloudwatchEventsRole
-          - Arn
-      Runtime: nodejs
-      Timeout: 300
-      Code:
-        ZipFile: !minify ./src/cloudwatch-rule-custom-event.js
+  ### Lambda Function
 
   SQSToLambdaFunctionPermission1:
     Type: AWS::Lambda::Permission
@@ -183,8 +126,8 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent1
-          - RuleArn
+          - CloudWatchEvent01
+          - Arn
 
   SQSToLambdaFunctionPermission2:
     Type: AWS::Lambda::Permission
@@ -193,8 +136,8 @@ Resources:
       <<: *PERMISSION_PROPERTIES
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent2
-          - RuleArn
+          - CloudWatchEvent02
+          - Arn
 
   SQSToLambdaFunctionPermission3:
     Type: AWS::Lambda::Permission
@@ -203,8 +146,8 @@ Resources:
       <<: *PERMISSION_PROPERTIES
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent3
-          - RuleArn
+          - CloudWatchEvent03
+          - Arn
 
   SQSToLambdaFunctionPermission4:
     Type: AWS::Lambda::Permission
@@ -213,8 +156,8 @@ Resources:
       <<: *PERMISSION_PROPERTIES
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent4
-          - RuleArn
+          - CloudWatchEvent04
+          - Arn
 
   SQSToLambdaFunctionPermission5:
     Type: AWS::Lambda::Permission
@@ -223,8 +166,8 @@ Resources:
       <<: *PERMISSION_PROPERTIES
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent5
-          - RuleArn
+          - CloudWatchEvent05
+          - Arn
 
   SQSToLambdaFunction:
     Type: AWS::Lambda::Function

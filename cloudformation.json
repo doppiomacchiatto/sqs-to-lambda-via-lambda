@@ -82,201 +82,103 @@
         ]
       }
     },
-    "SetupCloudwatchEventsRole": {
-      "Type": "AWS::IAM::Role",
+    "CloudWatchEvent01": {
+      "Type": "AWS::Events::Rule",
       "Properties": {
-        "Path": "/",
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
-        },
-        "Policies": [
+        "ScheduleExpression": "cron(0/5 * * * ? *)",
+        "Targets": [
           {
-            "PolicyName": "setup-cloudwatch-events",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "events:PutRule",
-                    "events:PutTargets",
-                    "events:RemoveTargets",
-                    "events:DeleteRule"
-                  ],
-                  "Resource": [
-                    "*"
-                  ]
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"
-                  ],
-                  "Resource": "arn:aws:logs:*:*:*"
-                }
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
               ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
             }
           }
         ]
       }
     },
-    "CloudWatchEvent1": {
-      "Type": "Custom::CloudWatchEvent",
-      "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsFunction",
-            "Arn"
-          ]
-        },
-        "Region": {
-          "Ref": "AWS::Region"
-        },
-        "TargetFunction": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "TargetFunctionArn": {
-          "Fn::GetAtt": [
-            "SQSToLambdaFunction",
-            "Arn"
-          ]
-        },
-        "RuleNamePrefix": "rule1-",
-        "ScheduleExpression": "cron(0/5 * * * ? *)"
-      }
-    },
-    "CloudWatchEvent2": {
-      "Type": "Custom::CloudWatchEvent",
+    "CloudWatchEvent02": {
+      "Type": "AWS::Events::Rule",
       "Condition": "EnableMinutePoll",
       "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsFunction",
-            "Arn"
-          ]
-        },
-        "Region": {
-          "Ref": "AWS::Region"
-        },
-        "TargetFunction": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "TargetFunctionArn": {
-          "Fn::GetAtt": [
-            "SQSToLambdaFunction",
-            "Arn"
-          ]
-        },
-        "RuleNamePrefix": "rule2-",
-        "ScheduleExpression": "cron(1/5 * * * ? *)"
+        "ScheduleExpression": "cron(1/5 * * * ? *)",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
+            }
+          }
+        ]
       }
     },
-    "CloudWatchEvent3": {
-      "Type": "Custom::CloudWatchEvent",
+    "CloudWatchEvent03": {
+      "Type": "AWS::Events::Rule",
       "Condition": "EnableMinutePoll",
       "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsFunction",
-            "Arn"
-          ]
-        },
-        "Region": {
-          "Ref": "AWS::Region"
-        },
-        "TargetFunction": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "TargetFunctionArn": {
-          "Fn::GetAtt": [
-            "SQSToLambdaFunction",
-            "Arn"
-          ]
-        },
-        "RuleNamePrefix": "rule3-",
-        "ScheduleExpression": "cron(2/5 * * * ? *)"
+        "ScheduleExpression": "cron(2/5 * * * ? *)",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
+            }
+          }
+        ]
       }
     },
-    "CloudWatchEvent4": {
-      "Type": "Custom::CloudWatchEvent",
+    "CloudWatchEvent04": {
+      "Type": "AWS::Events::Rule",
       "Condition": "EnableMinutePoll",
       "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsFunction",
-            "Arn"
-          ]
-        },
-        "Region": {
-          "Ref": "AWS::Region"
-        },
-        "TargetFunction": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "TargetFunctionArn": {
-          "Fn::GetAtt": [
-            "SQSToLambdaFunction",
-            "Arn"
-          ]
-        },
-        "RuleNamePrefix": "rule4-",
-        "ScheduleExpression": "cron(3/5 * * * ? *)"
+        "ScheduleExpression": "cron(3/5 * * * ? *)",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
+            }
+          }
+        ]
       }
     },
-    "CloudWatchEvent5": {
-      "Type": "Custom::CloudWatchEvent",
+    "CloudWatchEvent05": {
+      "Type": "AWS::Events::Rule",
       "Condition": "EnableMinutePoll",
       "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsFunction",
-            "Arn"
-          ]
-        },
-        "Region": {
-          "Ref": "AWS::Region"
-        },
-        "TargetFunction": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "TargetFunctionArn": {
-          "Fn::GetAtt": [
-            "SQSToLambdaFunction",
-            "Arn"
-          ]
-        },
-        "RuleNamePrefix": "rule5-",
-        "ScheduleExpression": "cron(4/5 * * * ? *)"
-      }
-    },
-    "SetupCloudwatchEventsFunction": {
-      "Type": "AWS::Lambda::Function",
-      "Properties": {
-        "Description": "Creates a 5 minute CloudWatch rule on the specified function.",
-        "Handler": "index.handler",
-        "MemorySize": 128,
-        "Role": {
-          "Fn::GetAtt": [
-            "SetupCloudwatchEventsRole",
-            "Arn"
-          ]
-        },
-        "Runtime": "nodejs",
-        "Timeout": 300,
-        "Code": {
-          "ZipFile": "var e=require(\"aws-sdk\"),r=new e.CloudWatchEvents,o=require(\"cfn-response\");exports.handler=function(e,n){var s=e.ResourceProperties.TargetFunction,t=e.ResourceProperties.RuleNamePrefix+s;\"Create\"===e.RequestType||\"Update\"===e.RequestType?r.putRule({Name:t,ScheduleExpression:e.ResourceProperties.ScheduleExpression,State:\"ENABLED\"},function(s,u){if(s)return console.log(s),void o.send(e,n,o.FAILED,{});var i=u.RuleArn;r.putTargets({Rule:t,Targets:[{Id:t,Arn:e.ResourceProperties.TargetFunctionArn}]},function(r,s){return r?(console.log(r),void o.send(e,n,o.FAILED,{})):void o.send(e,n,o.SUCCESS,{RuleArn:i},t)})}):\"Delete\"===e.RequestType&&r.removeTargets({Rule:t,Ids:[t]},function(s,u){return s?(console.log(s),void o.send(e,n,o.FAILED,{})):void r.deleteRule({Name:t},function(r,s){return r?(console.log(r),void o.send(e,n,o.FAILED,{})):void o.send(e,n,o.SUCCESS,{},t)})})};"
-        }
+        "ScheduleExpression": "cron(4/5 * * * ? *)",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
+            }
+          }
+        ]
       }
     },
     "SQSToLambdaFunctionPermission1": {
@@ -289,8 +191,8 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent1",
-            "RuleArn"
+            "CloudWatchEvent01",
+            "Arn"
           ]
         }
       }
@@ -306,8 +208,8 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent2",
-            "RuleArn"
+            "CloudWatchEvent02",
+            "Arn"
           ]
         }
       }
@@ -323,8 +225,8 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent3",
-            "RuleArn"
+            "CloudWatchEvent03",
+            "Arn"
           ]
         }
       }
@@ -340,8 +242,8 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent4",
-            "RuleArn"
+            "CloudWatchEvent04",
+            "Arn"
           ]
         }
       }
@@ -357,8 +259,8 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent5",
-            "RuleArn"
+            "CloudWatchEvent05",
+            "Arn"
           ]
         }
       }
