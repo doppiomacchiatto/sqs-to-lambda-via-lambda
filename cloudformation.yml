@@ -28,10 +28,15 @@ Parameters:
 Outputs: {}
 
 Conditions:
-  EnableMinutePoll:
+  Enable1MinutePoll:
     Fn::Equals:
       - Ref: Frequency
       - 1Minute
+
+  Enable5MinutePoll:
+    Fn::Equals:
+      - Ref: Frequency
+      - Continuous
 
 Resources:
 
@@ -73,11 +78,25 @@ Resources:
                   - logs:PutLogEvents
                 Resource: arn:aws:logs:*:*:*
 
-  ### CloudWatch Events
+  ### CloudWatch Event
 
-  CloudWatchEvent01:
+  CloudWatchEvent1Minute:
     Type: AWS::Events::Rule
-    Properties: &EVENT_PROPERTIES
+    Condition: Enable1MinutePoll
+    Properties:
+      ScheduleExpression: cron(* * * * ? *)
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - SQSToLambdaFunction
+              - Arn
+          Id:
+            Ref: SQSToLambdaFunction
+
+  CloudWatchEvent5Minute:
+    Type: AWS::Events::Rule
+    Condition: Enable5MinutePoll
+    Properties:
       ScheduleExpression: cron(0/5 * * * ? *)
       Targets:
         - Arn:
@@ -87,38 +106,11 @@ Resources:
           Id:
             Ref: SQSToLambdaFunction
 
-  CloudWatchEvent02:
-    Type: AWS::Events::Rule
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *EVENT_PROPERTIES
-      ScheduleExpression: cron(1/5 * * * ? *)
-
-  CloudWatchEvent03:
-    Type: AWS::Events::Rule
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *EVENT_PROPERTIES
-      ScheduleExpression: cron(2/5 * * * ? *)
-
-  CloudWatchEvent04:
-    Type: AWS::Events::Rule
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *EVENT_PROPERTIES
-      ScheduleExpression: cron(3/5 * * * ? *)
-
-  CloudWatchEvent05:
-    Type: AWS::Events::Rule
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *EVENT_PROPERTIES
-      ScheduleExpression: cron(4/5 * * * ? *)
-
   ### Lambda Function
 
-  SQSToLambdaFunctionPermission1:
+  SQSToLambdaFunctionPermission1Minute:
     Type: AWS::Lambda::Permission
+    Condition: Enable1MinutePoll
     Properties: &PERMISSION_PROPERTIES
       Action: lambda:InvokeFunction
       FunctionName:
@@ -126,47 +118,17 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent01
+          - CloudWatchEvent1Minute
           - Arn
 
-  SQSToLambdaFunctionPermission2:
+  SQSToLambdaFunctionPermission5Minute:
     Type: AWS::Lambda::Permission
-    Condition: EnableMinutePoll
+    Condition: Enable5MinutePoll
     Properties:
       <<: *PERMISSION_PROPERTIES
       SourceArn:
         Fn::GetAtt:
-          - CloudWatchEvent02
-          - Arn
-
-  SQSToLambdaFunctionPermission3:
-    Type: AWS::Lambda::Permission
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *PERMISSION_PROPERTIES
-      SourceArn:
-        Fn::GetAtt:
-          - CloudWatchEvent03
-          - Arn
-
-  SQSToLambdaFunctionPermission4:
-    Type: AWS::Lambda::Permission
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *PERMISSION_PROPERTIES
-      SourceArn:
-        Fn::GetAtt:
-          - CloudWatchEvent04
-          - Arn
-
-  SQSToLambdaFunctionPermission5:
-    Type: AWS::Lambda::Permission
-    Condition: EnableMinutePoll
-    Properties:
-      <<: *PERMISSION_PROPERTIES
-      SourceArn:
-        Fn::GetAtt:
-          - CloudWatchEvent05
+          - CloudWatchEvent5Minute
           - Arn
 
   SQSToLambdaFunction:

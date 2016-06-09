@@ -17,12 +17,20 @@
   },
   "Outputs": {},
   "Conditions": {
-    "EnableMinutePoll": {
+    "Enable1MinutePoll": {
       "Fn::Equals": [
         {
           "Ref": "Frequency"
         },
         "1Minute"
+      ]
+    },
+    "Enable5MinutePoll": {
+      "Fn::Equals": [
+        {
+          "Ref": "Frequency"
+        },
+        "Continuous"
       ]
     }
   },
@@ -82,8 +90,29 @@
         ]
       }
     },
-    "CloudWatchEvent01": {
+    "CloudWatchEvent1Minute": {
       "Type": "AWS::Events::Rule",
+      "Condition": "Enable1MinutePoll",
+      "Properties": {
+        "ScheduleExpression": "cron(* * * * ? *)",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SQSToLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Id": {
+              "Ref": "SQSToLambdaFunction"
+            }
+          }
+        ]
+      }
+    },
+    "CloudWatchEvent5Minute": {
+      "Type": "AWS::Events::Rule",
+      "Condition": "Enable5MinutePoll",
       "Properties": {
         "ScheduleExpression": "cron(0/5 * * * ? *)",
         "Targets": [
@@ -101,88 +130,9 @@
         ]
       }
     },
-    "CloudWatchEvent02": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "ScheduleExpression": "cron(1/5 * * * ? *)",
-        "Targets": [
-          {
-            "Arn": {
-              "Fn::GetAtt": [
-                "SQSToLambdaFunction",
-                "Arn"
-              ]
-            },
-            "Id": {
-              "Ref": "SQSToLambdaFunction"
-            }
-          }
-        ]
-      }
-    },
-    "CloudWatchEvent03": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "ScheduleExpression": "cron(2/5 * * * ? *)",
-        "Targets": [
-          {
-            "Arn": {
-              "Fn::GetAtt": [
-                "SQSToLambdaFunction",
-                "Arn"
-              ]
-            },
-            "Id": {
-              "Ref": "SQSToLambdaFunction"
-            }
-          }
-        ]
-      }
-    },
-    "CloudWatchEvent04": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "ScheduleExpression": "cron(3/5 * * * ? *)",
-        "Targets": [
-          {
-            "Arn": {
-              "Fn::GetAtt": [
-                "SQSToLambdaFunction",
-                "Arn"
-              ]
-            },
-            "Id": {
-              "Ref": "SQSToLambdaFunction"
-            }
-          }
-        ]
-      }
-    },
-    "CloudWatchEvent05": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "ScheduleExpression": "cron(4/5 * * * ? *)",
-        "Targets": [
-          {
-            "Arn": {
-              "Fn::GetAtt": [
-                "SQSToLambdaFunction",
-                "Arn"
-              ]
-            },
-            "Id": {
-              "Ref": "SQSToLambdaFunction"
-            }
-          }
-        ]
-      }
-    },
-    "SQSToLambdaFunctionPermission1": {
+    "SQSToLambdaFunctionPermission1Minute": {
       "Type": "AWS::Lambda::Permission",
+      "Condition": "Enable1MinutePoll",
       "Properties": {
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
@@ -191,15 +141,15 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent01",
+            "CloudWatchEvent1Minute",
             "Arn"
           ]
         }
       }
     },
-    "SQSToLambdaFunctionPermission2": {
+    "SQSToLambdaFunctionPermission5Minute": {
       "Type": "AWS::Lambda::Permission",
-      "Condition": "EnableMinutePoll",
+      "Condition": "Enable5MinutePoll",
       "Properties": {
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
@@ -208,58 +158,7 @@
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "CloudWatchEvent02",
-            "Arn"
-          ]
-        }
-      }
-    },
-    "SQSToLambdaFunctionPermission3": {
-      "Type": "AWS::Lambda::Permission",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "Action": "lambda:InvokeFunction",
-        "FunctionName": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "Principal": "events.amazonaws.com",
-        "SourceArn": {
-          "Fn::GetAtt": [
-            "CloudWatchEvent03",
-            "Arn"
-          ]
-        }
-      }
-    },
-    "SQSToLambdaFunctionPermission4": {
-      "Type": "AWS::Lambda::Permission",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "Action": "lambda:InvokeFunction",
-        "FunctionName": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "Principal": "events.amazonaws.com",
-        "SourceArn": {
-          "Fn::GetAtt": [
-            "CloudWatchEvent04",
-            "Arn"
-          ]
-        }
-      }
-    },
-    "SQSToLambdaFunctionPermission5": {
-      "Type": "AWS::Lambda::Permission",
-      "Condition": "EnableMinutePoll",
-      "Properties": {
-        "Action": "lambda:InvokeFunction",
-        "FunctionName": {
-          "Ref": "SQSToLambdaFunction"
-        },
-        "Principal": "events.amazonaws.com",
-        "SourceArn": {
-          "Fn::GetAtt": [
-            "CloudWatchEvent05",
+            "CloudWatchEvent5Minute",
             "Arn"
           ]
         }
