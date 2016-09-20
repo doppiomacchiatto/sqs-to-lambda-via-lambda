@@ -26,7 +26,7 @@ First, create the CloudFormation stack. Inside a clone of this project:
 ```bash
 aws --region us-east-1 cloudformation create-stack                            \
   --stack-name sqs-to-lambda                                                  \
-  --template-body file://cloudformation.json                                  \
+  --template-body file://sqs-to-lambda.yml                                    \
   --parameters 'ParameterKey=QueueToFunctionMapping,ParameterValue="<queue url 1>,<function 1>,<queue url 2>,<function 2>,..."' \
   --capabilities CAPABILITY_IAM
 ```
@@ -70,15 +70,11 @@ runs for almost 5 minutes, constantly polling.
 If you choose 1Minute frequency, the function is invoked every minute, but exits
 once the queue returns 0 items to process.
 
-### What's up with the `cloudformation.yml` file?
-
-Yaml is a much easier format to write these in. Trust me.
-
-### What's up with the Javascript in `cloudformation.json`?
+### What's up with the Javascript in `sqs-to-lambda.yml`?
 
 Embedding Javascript in the CloudFormation template is an easy way to make the
 template self-contained. It also allows us to dynamically inject the configuration
-into the SQS poller function. The javascript in the `cloudformation.json` file
+into the SQS poller function. The javascript in the `sqs-to-lambda.yml` file
 is minimized from `sqs-to-lambda.js`.
 
 We minimize the Javascript because there is a 2KB limit to inline code in
@@ -86,7 +82,8 @@ CloudFormation templates.
 
 ## Building
 
-The `cloudformation.json` file is a build artifact - don't edit it directly!
+The `sqs-to-lambda.yml` file is a build artifact - don't edit it directly!
+The original is in `src/cloudformation.yml`
 To build:
 
 ```
@@ -96,5 +93,5 @@ $ npm run build
 
 ## Contributing
 
-Make your changes, build a new `cloudformation.json` file (see above), and
+Make your changes, build a new `sqs-to-lambda.yml` file (see above), and
 submit a pull request.

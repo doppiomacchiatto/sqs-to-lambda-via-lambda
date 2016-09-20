@@ -28,15 +28,8 @@ Parameters:
 Outputs: {}
 
 Conditions:
-  Enable1MinutePoll:
-    Fn::Equals:
-      - Ref: Frequency
-      - 1Minute
-
-  Enable5MinutePoll:
-    Fn::Equals:
-      - Ref: Frequency
-      - Continuous
+  Enable1MinutePoll: !Equals [!Ref Frequency, 1Minute]
+  Enable5MinutePoll: !Equals [!Ref Frequency, Continuous]
 
 Resources:
 
@@ -86,12 +79,8 @@ Resources:
     Properties:
       ScheduleExpression: cron(* * * * ? *)
       Targets:
-        - Arn:
-            Fn::GetAtt:
-              - SQSToLambdaFunction
-              - Arn
-          Id:
-            Ref: SQSToLambdaFunction
+        - Arn: !GetAtt [SQSToLambdaFunction, Arn]
+          Id: !Ref SQSToLambdaFunction
 
   CloudWatchEvent5Minute:
     Type: AWS::Events::Rule
@@ -99,37 +88,30 @@ Resources:
     Properties:
       ScheduleExpression: cron(0/5 * * * ? *)
       Targets:
-        - Arn:
-            Fn::GetAtt:
-              - SQSToLambdaFunction
-              - Arn
-          Id:
-            Ref: SQSToLambdaFunction
+        - Arn: !GetAtt [SQSToLambdaFunction, Arn]
+          Id: !Ref SQSToLambdaFunction
 
   ### Lambda Function
 
   SQSToLambdaFunctionPermission1Minute:
     Type: AWS::Lambda::Permission
     Condition: Enable1MinutePoll
-    Properties: &PERMISSION_PROPERTIES
+    Properties:
       Action: lambda:InvokeFunction
       FunctionName:
         Ref: SQSToLambdaFunction
       Principal: events.amazonaws.com
-      SourceArn:
-        Fn::GetAtt:
-          - CloudWatchEvent1Minute
-          - Arn
+      SourceArn: !GetAtt [CloudWatchEvent1Minute, Arn]
 
   SQSToLambdaFunctionPermission5Minute:
     Type: AWS::Lambda::Permission
     Condition: Enable5MinutePoll
     Properties:
-      <<: *PERMISSION_PROPERTIES
-      SourceArn:
-        Fn::GetAtt:
-          - CloudWatchEvent5Minute
-          - Arn
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: SQSToLambdaFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt [CloudWatchEvent5Minute, Arn]
 
   SQSToLambdaFunction:
     Type: AWS::Lambda::Function
@@ -137,19 +119,12 @@ Resources:
       Description: Invokes Lambda functions with items from SQS queues.
       Handler: index.handler
       MemorySize: 128
-      Role:
-        Fn::GetAtt:
-          - SQSToLambdaRole
-          - Arn
+      Role: !GetAtt [SQSToLambdaRole, Arn]
       Runtime: nodejs
       Timeout: 300
       Code:
         ZipFile:
-          Fn::Join:
-          - ""
-          - - 'var CONFIG = "'
-            - Ref: QueueToFunctionMapping
-            - '".split(","); var ONCE = "'
-            - Ref: Frequency
-            - '" === "1Minute";'
-            - !minify ./src/sqs-to-lambda.js
+          Fn::Sub: |
+            var CONFIG = "${QueueToFunctionMapping}".split(",");
+            var ONCE = "${Frequency}" === "1Minute";
+            function e(n,i,t,a){return t()<5e3?a():""==n||""==i?a():void s.receiveMessage({QueueUrl:n,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(s,g){return s?(console.log(s),a()):g.Messages&&0!==g.Messages.length?void o.invoke({FunctionName:i,InvocationType:"Event",Payload:JSON.stringify({source:"aws.sqs",QueueUrl:n,Message:g.Messages[0]})},function(s){return s?(console.log(s),a()):e(n,i,t,a)}):r?a():e(n,i,t,a)})}var n=require("aws-sdk"),s=new n.SQS,o=new n.Lambda,i=CONFIG,r=ONCE;exports.handler=function(n,s){if(0===i.length)return s.done();for(var o=i.length/2,r=function(){o-=1,0==o&&(console.log("exiting"),s.done())},t=0;t<i.length;t+=2)e(i[t],i[t+1],s.getRemainingTimeInMillis,r)};

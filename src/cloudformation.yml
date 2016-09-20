@@ -1,0 +1,130 @@
+Description: |
+  Creates a Lambda function that invokes other Lambda functions with
+  SQS events.
+
+Parameters:
+  QueueToFunctionMapping:
+    Description: |
+      The list of SQS queue URLs and corresponding Lambda function
+      names. Separate queue urls, function names, and pairs with commas:
+      <queue_url_1>,<function_1>,<queue_url_2>,<function_2>.
+      There must be an odd number of commas.
+    Type: String
+
+  Frequency:
+    Description: |
+      How often you want the specified SQS queues checked. If you choose
+      "Continuous", a Lambda function will be constantly running, waiting for
+      items in the queue. If you choose "1Minute", the Lambda function will
+      only run every minute and check every queue. This can result in drastically
+      reduced Lambda cost, at the expense of waiting up to a minute for items
+      to become visibile in the queue before being processed by your functions.
+    Type: String
+    Default: Continuous
+    AllowedValues:
+      - Continuous
+      - 1Minute
+
+Outputs: {}
+
+Conditions:
+  Enable1MinutePoll: !Equals [!Ref Frequency, 1Minute]
+  Enable5MinutePoll: !Equals [!Ref Frequency, Continuous]
+
+Resources:
+
+  ### IAM Setup
+
+  SQSToLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lambda-to-sqs-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                Resource:
+                  # TODO: Should we list the configured queues and functions here?
+                  # Will blank ones cause any problems? One problem is that queues
+                  # are supplied with URLs, and functions with names. (No ARNs.)
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - lambda:Invoke*
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+  ### CloudWatch Event
+
+  CloudWatchEvent1Minute:
+    Type: AWS::Events::Rule
+    Condition: Enable1MinutePoll
+    Properties:
+      ScheduleExpression: cron(* * * * ? *)
+      Targets:
+        - Arn: !GetAtt [SQSToLambdaFunction, Arn]
+          Id: !Ref SQSToLambdaFunction
+
+  CloudWatchEvent5Minute:
+    Type: AWS::Events::Rule
+    Condition: Enable5MinutePoll
+    Properties:
+      ScheduleExpression: cron(0/5 * * * ? *)
+      Targets:
+        - Arn: !GetAtt [SQSToLambdaFunction, Arn]
+          Id: !Ref SQSToLambdaFunction
+
+  ### Lambda Function
+
+  SQSToLambdaFunctionPermission1Minute:
+    Type: AWS::Lambda::Permission
+    Condition: Enable1MinutePoll
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: SQSToLambdaFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt [CloudWatchEvent1Minute, Arn]
+
+  SQSToLambdaFunctionPermission5Minute:
+    Type: AWS::Lambda::Permission
+    Condition: Enable5MinutePoll
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: SQSToLambdaFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt [CloudWatchEvent5Minute, Arn]
+
+  SQSToLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Invokes Lambda functions with items from SQS queues.
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt [SQSToLambdaRole, Arn]
+      Runtime: nodejs
+      Timeout: 300
+      Code:
+        ZipFile:
+          Fn::Sub: |
+            var CONFIG = "${QueueToFunctionMapping}".split(",");
+            var ONCE = "${Frequency}" === "1Minute";
+            {SQSToLambdaCode}

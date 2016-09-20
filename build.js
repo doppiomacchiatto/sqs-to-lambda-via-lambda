@@ -1,21 +1,10 @@
-var yaml = require('js-yaml');
 var UglifyJS = require("uglify-js");
 var fs = require('fs');
 
-var MinifyYamlType = new yaml.Type('!minify', {
-  kind: 'scalar',
-  construct: function(data) {
-    return UglifyJS.minify(data, {
-      mangle: {
-        'toplevel': true
-      }
-    }).code;
-  }
-});
+var sqsToLambdaCode = UglifyJS.minify('./src/sqs-to-lambda.js', {
+  mangle: { 'toplevel': true }
+}).code;
 
-var SCHEMA = yaml.Schema.create([ MinifyYamlType ]);
-
-var templateBody = fs.readFileSync('./cloudformation.yml', 'utf-8');
-var template = yaml.load(templateBody, { schema: SCHEMA });
-
-fs.writeFileSync('./cloudformation.json', JSON.stringify(template, null, '  '), 'utf-8');
+var templateBody = fs.readFileSync('./src/cloudformation.yml', 'utf-8');
+var builtTemplate = templateBody.replace('{SQSToLambdaCode}', sqsToLambdaCode);
+fs.writeFileSync('./sqs-to-lambda.yml', builtTemplate);
