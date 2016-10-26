@@ -120,7 +120,7 @@ Resources:
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt [SQSToLambdaRole, Arn]
-      Runtime: nodejs
+      Runtime: nodejs4.3
       Timeout: 300
       Code:
         ZipFile:

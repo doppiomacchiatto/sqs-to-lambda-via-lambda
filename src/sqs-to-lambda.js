@@ -57,17 +57,16 @@ function pollQueue(queueUrl, functionName, remaining, done) {
   });
 }
 
-exports.handler = function(event, context) {
+exports.handler = function(event, context, callback) {
   if (config.length === 0) {
-    return context.done();
+    return callback();
   }
 
   var remainingWorkers = config.length / 2;
   var done = function() {
     remainingWorkers = remainingWorkers - 1;
     if (remainingWorkers == 0) {
-      console.log('exiting');
-      context.done();
+      callback();
     }
   }
 

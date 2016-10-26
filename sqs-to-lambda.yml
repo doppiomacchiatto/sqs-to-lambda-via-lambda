@@ -120,11 +120,11 @@ Resources:
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt [SQSToLambdaRole, Arn]
-      Runtime: nodejs
+      Runtime: nodejs4.3
       Timeout: 300
       Code:
         ZipFile:
           Fn::Sub: |
             var CONFIG = "${QueueToFunctionMapping}".split(",");
             var ONCE = "${Frequency}" === "1Minute";
-            function e(n,i,t,a){return t()<5e3?a():""==n||""==i?a():void s.receiveMessage({QueueUrl:n,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(s,g){return s?(console.log(s),a()):g.Messages&&0!==g.Messages.length?void o.invoke({FunctionName:i,InvocationType:"Event",Payload:JSON.stringify({source:"aws.sqs",QueueUrl:n,Message:g.Messages[0]})},function(s){return s?(console.log(s),a()):e(n,i,t,a)}):r?a():e(n,i,t,a)})}var n=require("aws-sdk"),s=new n.SQS,o=new n.Lambda,i=CONFIG,r=ONCE;exports.handler=function(n,s){if(0===i.length)return s.done();for(var o=i.length/2,r=function(){o-=1,0==o&&(console.log("exiting"),s.done())},t=0;t<i.length;t+=2)e(i[t],i[t+1],s.getRemainingTimeInMillis,r)};
+            function e(n,o,a,t){return a()<5e3?t():""==n||""==o?t():void s.receiveMessage({QueueUrl:n,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(s,u){return s?(console.log(s),t()):u.Messages&&0!==u.Messages.length?void i.invoke({FunctionName:o,InvocationType:"Event",Payload:JSON.stringify({source:"aws.sqs",QueueUrl:n,Message:u.Messages[0]})},function(s){return s?(console.log(s),t()):e(n,o,a,t)}):r?t():e(n,o,a,t)})}var n=require("aws-sdk"),s=new n.SQS,i=new n.Lambda,o=CONFIG,r=ONCE;exports.handler=function(n,s,i){if(0===o.length)return i();for(var r=o.length/2,a=function(){r-=1,0==r&&i()},t=0;t<o.length;t+=2)e(o[t],o[t+1],s.getRemainingTimeInMillis,a)};
