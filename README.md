@@ -56,6 +56,17 @@ sent to their respective queues. The payload is an object with `source` set to
 *NOTE:* Your Lambda function will need to delete the item from the queue using the given
 `ReceiptHandle`! Otherwise, it will keep getting delivered.
 
+## Concurrency
+
+By default, your function is invoked in a serial manner with each SQS item. You
+can change this by setting the Concurrency parameter in the Cloudformation stack.
+This setting is applied individually to each mapping, so if you have 3 queue->function
+mappings, and set Concurrency to 5, you may have 3 * 5 functions running in parallel
+if your queues have enough items in them.
+
+Note that this is just a guideline. If you are really worried about how many functions are
+running concurrently, use the Frequency = Continuous type function as it will be more consistent.
+
 ## Questions
 
 ### How does it work?

@@ -25,6 +25,16 @@ Parameters:
       - Continuous
       - 1Minute
 
+  Concurrency:
+    Description: |
+      How many simultaneous Lambda functions should be invoked per mapping. This
+      will attempt to limit how many functions are running at once, so that a
+      large influx of work to SQS will not result in too many functions running.
+      This is not a hard limit, just an guideline. It will work better with
+      Frequency set to Continuous.
+    Type: Number
+    Default: 1
+
 Outputs: {}
 
 Conditions:
@@ -125,6 +135,7 @@ Resources:
       Code:
         ZipFile:
           Fn::Sub: |
-            var CONFIG = "${QueueToFunctionMapping}".split(",");
-            var ONCE = "${Frequency}" === "1Minute";
+            const CONFIG = "${QueueToFunctionMapping}".split(",");
+            const ONCE = "${Frequency}" === "1Minute";
+            const CONCURRENCY = ${Concurrency} || 1;
             {SQSToLambdaCode}

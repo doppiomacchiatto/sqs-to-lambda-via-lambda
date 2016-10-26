@@ -25,6 +25,16 @@ Parameters:
       - Continuous
       - 1Minute
 
+  Concurrency:
+    Description: |
+      How many simultaneous Lambda functions should be invoked per mapping. This
+      will attempt to limit how many functions are running at once, so that a
+      large influx of work to SQS will not result in too many functions running.
+      This is not a hard limit, just an guideline. It will work better with
+      Frequency set to Continuous.
+    Type: Number
+    Default: 1
+
 Outputs: {}
 
 Conditions:
@@ -125,6 +135,7 @@ Resources:
       Code:
         ZipFile:
           Fn::Sub: |
-            var CONFIG = "${QueueToFunctionMapping}".split(",");
-            var ONCE = "${Frequency}" === "1Minute";
-            function e(n,o,a,t){return a()<5e3?t():""==n||""==o?t():void s.receiveMessage({QueueUrl:n,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(s,u){return s?(console.log(s),t()):u.Messages&&0!==u.Messages.length?void i.invoke({FunctionName:o,InvocationType:"Event",Payload:JSON.stringify({source:"aws.sqs",QueueUrl:n,Message:u.Messages[0]})},function(s){return s?(console.log(s),t()):e(n,o,a,t)}):r?t():e(n,o,a,t)})}var n=require("aws-sdk"),s=new n.SQS,i=new n.Lambda,o=CONFIG,r=ONCE;exports.handler=function(n,s,i){if(0===o.length)return i();for(var r=o.length/2,a=function(){r-=1,0==r&&i()},t=0;t<o.length;t+=2)e(o[t],o[t+1],s.getRemainingTimeInMillis,a)};
+            const CONFIG = "${QueueToFunctionMapping}".split(",");
+            const ONCE = "${Frequency}" === "1Minute";
+            const CONCURRENCY = ${Concurrency} || 1;
+            function e(n,r,i,t){return i()<5e3?t():""==n||""==r?t():void s.receiveMessage({QueueUrl:n,MaxNumberOfMessages:1,WaitTimeSeconds:1},function(s,a){return s?(console.log("error receiving messages",s),t()):a.Messages&&0!==a.Messages.length?void o.invoke({FunctionName:r,InvocationType:"RequestResponse",Payload:JSON.stringify({source:"aws.sqs",QueueUrl:n,Message:a.Messages[0]})},function(s){return s?(console.log("error invoking function",s),t()):e(n,r,i,t)}):ONCE?t():e(n,r,i,t)})}const n=require("aws-sdk"),s=new n.SQS,o=new n.Lambda;exports.handler=function(n,s,o){const r=CONFIG;if(0===r.length)return o();var i=r.length/2*CONCURRENCY;const t=function(){i-=1,0===i&&o()};for(var a=0;a<r.length;a+=2)for(var u=0;u<CONCURRENCY;u++)e(r[a],r[a+1],s.getRemainingTimeInMillis,t)};
